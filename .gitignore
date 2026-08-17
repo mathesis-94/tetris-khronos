@@ -24,10 +24,16 @@ out/
 build/
 *.class
 *.jar
+<<<<<<< HEAD
 
 # Build files
+=======
+>>>>>>> 184ceea (Remove old file structure (src/java, src/ui, src/util, src/model, src/resources))
 .factorypath
 
 # Application
 *.log
+<<<<<<< HEAD
 
+=======
+>>>>>>> 184ceea (Remove old file structure (src/java, src/ui, src/util, src/model, src/resources))
