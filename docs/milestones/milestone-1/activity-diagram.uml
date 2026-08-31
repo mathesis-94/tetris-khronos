@@ -1,0 +1,12 @@
+[Start Game]
+    ↓
+[Initialize Board]
+    ↓
+[Spawn Tetromino]
+    ↓
+[Is Game Over?] ← No ← [Move/Rotate Tetromino]
+    ↓ Yes              [Detect Collision?]
+[Display Game Over]   [Block Placed]
+    ↓                  [Check Full Rows]
+[End]                  [Erase Rows / Update Board]
+                       [P Key Pressed?] → [Pause/Resume]

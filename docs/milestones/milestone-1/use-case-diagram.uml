@@ -1,0 +1,15 @@
+idea?
+Actor: Player
+├── Use Case: Start Application
+│   └── Include: Display Splash
+├── Use Case: Play Game
+│   ├── Include: Spawn Tetromino
+│   ├── Include: Move/Rotate Piece
+│   ├── Include: Detect Collisions
+│   ├── Include: Erase Full Rows
+│   └── Extend: Pause Game
+├── Use Case: Configure Settings
+│   └── Modify: Field Size, Level, Audio
+├── Use Case: View High Scores
+└── Use Case: Exit Application
+    └── Include: Confirmation Dialog

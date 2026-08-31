@@ -7,7 +7,7 @@
 
 **Date:** 02/08/2026  
 
-**Team:** PG1
+**Team:** PG36 - note - formerly pg1 until others joined, now PG36, need to update mentions of PG1 to match this change
 
 ---
 
@@ -69,3 +69,70 @@ This document specifies **15 functional requirements** for this implementation o
 | Configuration screen | FR14, FR15 |
 
 ---
+
+
+to possibly incorporate:
+# Functional Requirements – Milestone 1
+
+## FR-001: Splash Window Display
+**Description:** System displays a splash window at startup containing group identity, course code, and version.
+**Precondition:** Application is launched.
+**Event:** Splash screen appears centered on screen.
+**Postcondition:** Splash screen displays for 2–3 seconds then transitions to main screen.
+**Test Case:** Launch app → verify splash displays → verify auto-transition after 3 seconds.
+
+## FR-002: Main Menu Navigation
+**Description:** User can navigate between Game Play, Configuration, High Scores, and Exit from main menu.
+**Precondition:** Application is on main screen.
+**Event:** User clicks button (Play, Config, High Scores, or Exit).
+**Postcondition:** System navigates to selected screen or exits application.
+**Test Case:** Click each button → verify navigation to correct screen.
+
+## FR-003: Game Field Display
+**Description:** Game field displays 10×20 grid with borders.
+**Precondition:** User is in Game Play screen.
+**Event:** Game screen loads.
+**Postcondition:** 10×20 field is rendered with grid lines.
+**Test Case:** Start game → verify field dimensions with 10 columns, 20 rows.
+
+## FR-004: Tetromino Spawn & Movement
+**Description:** Tetromino spawns at top-center and moves down; user controls with arrow keys.
+**Precondition:** Game is running, tetromino has spawned.
+**Event:** Left/Right arrow → moves piece; Up arrow → rotates; Down arrow → accelerates fall.
+**Postcondition:** Piece updates position; game detects collisions with boundaries and existing blocks.
+**Test Case:** Spawn piece → press arrow keys → verify movement; press Up → verify rotation.
+
+## FR-005: Row Completion & Erasure
+**Description:** When a row is completely filled, it is detected and erased; blocks above fall.
+**Precondition:** Game is running, a row becomes completely filled.
+**Event:** Row is detected as full.
+**Postcondition:** Row is deleted; blocks above descend; score is updated (Milestone 2).
+**Test Case:** Fill a row with tetrominoes → verify row disappears; verify blocks above fall correctly.
+
+## FR-006: Pause & Resume
+**Description:** User can pause game with P key; paused message displays; game resumes on next P press.
+**Precondition:** Game is running.
+**Event:** User presses P key.
+**Postcondition:** Game pauses; "PAUSED" message displays; next P resumes game.
+**Test Case:** Press P → verify game stops; press P → verify game resumes.
+
+## FR-007: Configuration Screen
+**Description:** Configuration screen displays interactive controls for field size, level, music, sound, AI, extended mode.
+**Precondition:** User navigates to Configuration from main menu.
+**Event:** Configuration screen loads.
+**Postcondition:** All controls (checkboxes, sliders, dropdowns) are interactive; Back button returns to main menu.
+**Test Case:** Toggle checkboxes → verify state changes; adjust sliders → verify values update.
+
+## FR-008: High Score Display
+**Description:** High Score screen displays top 10 scores (with dummy data for Milestone 1).
+**Precondition:** User navigates to High Scores from main menu.
+**Event:** High Score screen loads.
+**Postcondition:** Top 10 scores are displayed in ranked order; Back button returns to main menu.
+**Test Case:** Navigate to High Scores → verify 10 scores displayed; click Back → return to main menu.
+
+## FR-009: Exit Confirmation Dialog
+**Description:** When user clicks Exit or attempts to close, confirmation dialog appears.
+**Precondition:** User clicks Exit button or closes window.
+**Event:** Confirmation dialog appears with Yes/No options.
+**Postcondition:** Yes exits application; No returns to previous screen.
+**Test Case:** Click Exit → verify dialog appears; click Yes → verify app closes; click No → verify return to main menu.
