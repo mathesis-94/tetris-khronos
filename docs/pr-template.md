@@ -1,10 +1,10 @@
 # [TITLE] - Feature/Fix Description
 
 ## Description
-Brief overview of what this PR does.
+text here idk
 
 ## Related Issue
-Closes #X (if applicable)
+text
 
 ## Changes Made
 - Change 1
