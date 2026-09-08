@@ -214,33 +214,16 @@ public class Configuration {
     /**
      * Data transfer object for JSON serialisation, Jackson uses this to map JSON fields to conf fields
      */
-    static class ConfigData {
-        public int fieldWidth;
-        public int fieldHeight;
-        public int windowWidth;
-        public int windowHeight;
-        public int gameLevel;
-        public boolean musicEnabled;
-        public boolean soundEffectsEnabled;
-        public boolean aiPlayEnabled;
-        public boolean extendModeEnabled;
+     record ConfigData(
+         int fieldWidth,
+         int fieldHeight,
+         int gameLevel,
+         boolean musicEnabled,
+         boolean soundEffectsEnabled,
+         boolean aiPlayEnabled,
+         boolean extendModeEnabled,
+         int windowWidth,
+         int windowHeight
+     ) {}
 
-        public ConfigData() {
-        }
-
-        public ConfigData(int fieldWidth, int fieldHeight, int gameLevel,
-                         boolean musicEnabled, boolean soundEffectsEnabled,
-                         boolean aiPlayEnabled, boolean extendModeEnabled,
-                         int windowWidth, int windowHeight) {
-            this.fieldWidth = fieldWidth;
-            this.fieldHeight = fieldHeight;
-            this.gameLevel = gameLevel;
-            this.musicEnabled = musicEnabled;
-            this.soundEffectsEnabled = soundEffectsEnabled;
-            this.aiPlayEnabled = aiPlayEnabled;
-            this.extendModeEnabled = extendModeEnabled;
-            this.windowWidth = windowWidth;
-            this.windowHeight = windowHeight;
-        }
-    }
 }
