@@ -1,12 +1,50 @@
-[Start Game]
-    ↓
-[Initialize Board]
-    ↓
-[Spawn Tetromino]
-    ↓
-[Is Game Over?] ← No ← [Move/Rotate Tetromino]
-    ↓ Yes              [Detect Collision?]
-[Display Game Over]   [Block Placed]
-    ↓                  [Check Full Rows]
-[End]                  [Erase Rows / Update Board]
-                       [P Key Pressed?] → [Pause/Resume]
+@startuml TetrisKhronosActivityDiagram
+
+title Tetris Khronos - Activity Diagram (Milestone 1)
+
+start
+:Start Game;
+:Initialize Board;
+
+repeat
+  :Spawn Tetromino;
+
+  repeat
+    :Move/Rotate Tetromino;
+
+    if (Pause Key Pressed?) then (Yes)
+      repeat
+        :Resume Check;
+      repeat while (Paused?)
+    endif
+
+    :Detect Collision?;
+
+    if (Collision?) then (Yes)
+      :Block Placed;
+      break
+    else (No)
+    endif
+
+  repeat while (Piece Active?)
+
+  :Check Full Rows;
+
+  if (Full Rows?) then (Yes)
+    :Erase Rows / Update Board;
+  else (No)
+  endif
+
+  :Is Game Over?;
+
+  if (Game Over?) then (Yes)
+    :Display Game Over;
+    break
+  else (No)
+  endif
+
+repeat while (Game Active?)
+
+end
+
+@enduml

@@ -1,15 +1,55 @@
-idea?
-Actor: Player
-├── Use Case: Start Application
-│   └── Include: Display Splash
-├── Use Case: Play Game
-│   ├── Include: Spawn Tetromino
-│   ├── Include: Move/Rotate Piece
-│   ├── Include: Detect Collisions
-│   ├── Include: Erase Full Rows
-│   └── Extend: Pause Game
-├── Use Case: Configure Settings
-│   └── Modify: Field Size, Level, Audio
-├── Use Case: View High Scores
-└── Use Case: Exit Application
-    └── Include: Confirmation Dialog
+@startuml TetrisKhronosUseCaseDiagram
+!theme plain
+title Tetris Khronos - Use Case Diagram (Milestone 1)
+left to right direction
+
+package "Tetris Khronos Application" {
+  ' Tier 1: Main Use Cases
+  usecase UC_Start as "Start Application"
+  usecase UC_Play as "Play Game"
+  usecase UC_Config as "Configure Settings"
+  usecase UC_HighScore as "View High Scores"
+  usecase UC_Exit as "Exit Application"
+
+  ' Tier 2: Sub-use cases (Play Game)
+  usecase UC_Spawn as "Spawn Tetromino"
+  usecase UC_Move as "Move Tetromino"
+  usecase UC_Rotate as "Rotate Tetromino"
+  usecase UC_Collision as "Detect Collisions"
+  usecase UC_Erase as "Erase Full Rows"
+  usecase UC_Pause as "Pause Game"
+
+  ' Tier 2: Sub-use cases (Start Application)
+  usecase UC_Splash as "Display Splash Window"
+
+  ' Tier 2: Sub-use cases (Exit Application)
+  usecase UC_Confirm as "Display Confirmation Dialog"
+
+  ' Includes relationships (decomposition)
+  UC_Start ..> UC_Splash : <<include>>
+
+  UC_Play ..> UC_Spawn : <<include>>
+  UC_Play ..> UC_Move : <<include>>
+  UC_Play ..> UC_Rotate : <<include>>
+  UC_Play ..> UC_Collision : <<include>>
+  UC_Play ..> UC_Erase : <<include>>
+  UC_Play ..> UC_Pause : <<include>>
+
+  UC_Exit ..> UC_Confirm : <<include>>
+
+  ' Extends relationships (optional extensions)
+  UC_Move --|> UC_Collision : <<extend>>
+  UC_Rotate --|> UC_Collision : <<extend>>
+  UC_Spawn --|> UC_Collision : <<extend>>
+}
+
+actor Player
+
+' Actor associations
+Player --> UC_Start
+Player --> UC_Play
+Player --> UC_Config
+Player --> UC_HighScore
+Player --> UC_Exit
+
+@enduml
