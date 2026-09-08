@@ -11,29 +11,27 @@ public class GameScreen extends Screen {
     private final Game game;
     private final Scene scene;
     private final GamePanel gamePanel;
+    private final Stage stage;
 
     public GameScreen(Stage stage, Game game, Runnable onBack) {
         super(stage);
+        this.stage = stage;
         this.game = game;
         this.gamePanel = new GamePanel(game, onBack);
 
-        // Use Configuration window dimensions
-        Configuration config = game.getConfiguration();
-        int windowWidth = config.getWindowWidth();
-        int windowHeight = config.getWindowHeight();
+        int windowWidth = 400;   // 10 cols * 40px per cell
+        int windowHeight = 700;  // 20 rows * 35px per cell
 
         StackPane root = new StackPane(gamePanel);
         root.setPrefSize(windowWidth, windowHeight);
 
         scene = new Scene(root, windowWidth, windowHeight);
 
-        // Bind the stage size when the scene is shown
-        scene.windowProperty().addListener((obs, oldWindow, newWindow) -> {
-            if (newWindow != null) {
-                newWindow.setWidth(windowWidth);
-                newWindow.setHeight(windowHeight);
-            }
-        });
+        // Set stage size, center
+        stage.setWidth(windowWidth);
+        stage.setHeight(windowHeight);
+        stage.centerOnScreen();
+        stage.setResizable(false);
     }
 
     @Override

@@ -52,20 +52,23 @@ public class GamePanel extends BorderPane {
         pauseIndicator.setVisible(false);
         pauseIndicator.setStyle("-fx-text-fill: #00FF00; -fx-font-weight: bold; -fx-font-size: 80;");
 
-        // Wrap fieldPane with pause indicator overlay
         StackPane gameField = new StackPane(fieldPane, pauseIndicator);
         StackPane.setAlignment(pauseIndicator, Pos.CENTER);
         gameField.setStyle("-fx-background-color: #1a1a1a;");
 
-        // Make gameField fill available space
-        gameField.setPrefSize(Region.USE_COMPUTED_SIZE, Region.USE_COMPUTED_SIZE);
-        gameField.setMinSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        gameField.setPrefWidth(400);
+        gameField.setPrefHeight(700);
+        gameField.setMinWidth(400);
+        gameField.setMinHeight(700);
+        gameField.setMaxWidth(400);
+        gameField.setMaxHeight(700);
 
-        // Bind fieldPane to fill gameField
-        fieldPane.prefWidthProperty().bind(gameField.widthProperty());
-        fieldPane.prefHeightProperty().bind(gameField.heightProperty());
+        // old binding lines
+        // fieldPane.prefWidthProperty().bind(gameField.widthProperty());
+        // fieldPane.prefHeightProperty().bind(gameField.heightProperty());
 
-        // Wrap in VBox to allow it to grow
+
+        // vbox wrap grow
         VBox centerBox = new VBox(gameField);
         centerBox.setStyle("-fx-background-color: #1a1a1a;");
         VBox.setVgrow(gameField, Priority.ALWAYS);
@@ -84,12 +87,29 @@ public class GamePanel extends BorderPane {
     private void setupKeyboardInput() {
         setOnKeyPressed(event -> {
             KeyCode code = event.getCode();
+            boolean needsRender = false;
+
             switch (code) {
-                case LEFT -> game.moveLeft();
-                case RIGHT -> game.moveRight();
-                case DOWN -> game.moveDown();
-                case UP -> game.rotate();
-                case SPACE -> game.hardDrop();
+                case LEFT -> {
+                    game.moveLeft();
+                    needsRender = true;
+                }
+                case RIGHT -> {
+                    game.moveRight();
+                    needsRender = true;
+                }
+                case DOWN -> {
+                    game.moveDown();
+                    needsRender = true;
+                }
+                case UP -> {
+                    game.rotate();
+                    needsRender = true;
+                }
+                case SPACE -> {
+                    game.hardDrop();
+                    needsRender = true;
+                }
                 case P -> {
                     game.togglePause();
                     updatePauseIndicator();
@@ -97,9 +117,15 @@ public class GamePanel extends BorderPane {
                 case ESCAPE -> showQuitConfirm = true;
                 default -> {}
             }
+
+            if (needsRender) {
+                fieldPane.render(game);
+            }
+
             event.consume();
         });
     }
+
 
     private void updatePauseIndicator() {
         pauseIndicator.setVisible(game.isPaused());

@@ -18,7 +18,7 @@ public class Game {
 
     public Game(Configuration config) {
         this.config = config;
-        this.board = new Board(config.getFieldHeight(), config.getFieldWidth());
+        this.board = new Board(config.getFieldWidth(), config.getFieldHeight());
         this.gameState = GameState.IDLE;
         this.random = new Random();
         this.dropCounter = 0;
@@ -124,13 +124,28 @@ public class Game {
 
     public void rotate() {
         if (gameState != GameState.RUNNING) {
+            System.out.println("DEBUG: Game not running, state=" + gameState);
             return;
         }
+
+        System.out.println("DEBUG: Current piece type=" + currentPiece.getType() +
+                           ", rotationState=" + currentPiece.getRotationState() +
+                           ", x=" + currentPiece.getX() + ", y=" + currentPiece.getY());
+
         int[][] rotatedBlocks = currentPiece.getRotatedBlocks();
-        if (board.canPlaceBlocks(currentPiece.getX(), currentPiece.getY(), rotatedBlocks)) {
+        System.out.println("DEBUG: Rotated blocks to check: " + java.util.Arrays.deepToString(rotatedBlocks));
+
+        boolean canPlace = board.canPlaceBlocks(currentPiece.getX(), currentPiece.getY(), rotatedBlocks);
+        System.out.println("DEBUG: canPlaceBlocks result = " + canPlace);
+
+        if (canPlace) {
             currentPiece.rotate();
+            System.out.println("DEBUG: Rotation applied. New rotationState=" + currentPiece.getRotationState());
+        } else {
+            System.out.println("DEBUG: Rotation BLOCKED");
         }
     }
+
 
     public void hardDrop() {
         if (gameState != GameState.RUNNING) {

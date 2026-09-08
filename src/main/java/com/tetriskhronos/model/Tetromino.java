@@ -18,9 +18,10 @@ public sealed abstract class Tetromino permits
         this.shape = initialShape;
         this.color = color;
         this.type = type;
-        this.x = 3; // spawn near center (column 3-4 for 10-width board)
-        this.y = 0; // spawn at top
+        this.x = 4;  // 10 - shape.width
+        this.y = 0;  // Top
     }
+
 
     public int[][] getBlocks() {
         int[][] blocks = new int[4][2];
@@ -28,8 +29,8 @@ public sealed abstract class Tetromino permits
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[row].length; col++) {
                 if (shape[row][col] == 1 && blockIndex < 4) {
-                    blocks[blockIndex][0] = y + row;
-                    blocks[blockIndex][1] = x + col;
+                    blocks[blockIndex][0] = row;
+                    blocks[blockIndex][1] = col;
                     blockIndex++;
                 }
             }
@@ -43,8 +44,8 @@ public sealed abstract class Tetromino permits
         for (int row = 0; row < shape.length; row++) {
             for (int col = 0; col < shape[row].length; col++) {
                 if (shape[row][col] == 1 && blockIndex < 4) {
-                    blocks[blockIndex][0] = y + row + rowOffset;
-                    blocks[blockIndex][1] = x + col + colOffset;
+                    blocks[blockIndex][0] = row + rowOffset;
+                    blocks[blockIndex][1] = col + colOffset;
                     blockIndex++;
                 }
             }
@@ -52,27 +53,34 @@ public sealed abstract class Tetromino permits
         return blocks;
     }
 
-    public int[][] getRotatedBlocks() {
-        int[][] tempBlocks = new int[4][2];
-        int blockIndex = 0;
-        int oldRotationState = this.rotationState;
-        rotate();
-        for (int row = 0; row < shape.length; row++) {
-            for (int col = 0; col < shape[row].length; col++) {
-                if (shape[row][col] == 1 && blockIndex < 4) {
-                    tempBlocks[blockIndex][0] = y + row;
-                    tempBlocks[blockIndex][1] = x + col;
-                    blockIndex++;
-                }
-            }
-        }
+    /**
+     * Returns rotated block positions (relative offsets) (could be source of issue)
+     */
+     public int[][] getRotatedBlocks() {
+         int[][] originalShape = this.shape;
+         int originalRotationState = this.rotationState;
 
-        // Revert rotation
-        this.rotationState = oldRotationState;
-        rotate();
+         rotate();
 
-        return tempBlocks;
-    }
+         int[][] tempBlocks = new int[4][2];
+         int blockIndex = 0;
+         for (int row = 0; row < shape.length; row++) {
+             for (int col = 0; col < shape[row].length; col++) {
+                 if (shape[row][col] == 1 && blockIndex < 4) {
+                     tempBlocks[blockIndex][0] = row;
+                     tempBlocks[blockIndex][1] = col;
+                     blockIndex++;
+                 }
+             }
+         }
+
+         this.rotationState = originalRotationState;
+         this.shape = originalShape;
+
+         return tempBlocks;
+     }
+
+
 
     public void moveDown() {
         this.y++;
