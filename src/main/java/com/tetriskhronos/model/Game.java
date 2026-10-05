@@ -93,10 +93,10 @@ public class Game {
 
     private void addLinesToScore(int rowsCleared) {
         int lineScore = switch (rowsCleared) {
-            case 1 -> 40;
-            case 2 -> 100;
-            case 3 -> 300;
-            case 4 -> 1200;
+            case 1 -> 100;
+            case 2 -> 300;
+            case 3 -> 600;
+            case 4 -> 1000;
             default -> 0;
         };
         points += lineScore;

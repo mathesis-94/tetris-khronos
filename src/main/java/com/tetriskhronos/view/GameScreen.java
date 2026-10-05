@@ -3,9 +3,11 @@ package com.tetriskhronos.view;
 import com.tetriskhronos.model.Configuration;
 import com.tetriskhronos.model.Game;
 import com.tetriskhronos.view.panels.GamePanel;
+import com.tetriskhronos.audio.MusicManager;
 import javafx.scene.Scene;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
+
 
 public class GameScreen extends Screen {
     private final Game game;
@@ -37,6 +39,7 @@ public class GameScreen extends Screen {
     @Override
     public void show() {
         game.start();
+        MusicManager.getInstance().play();
         gamePanel.startGameLoop();
         gamePanel.requestFocus();
     }

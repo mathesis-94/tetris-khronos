@@ -21,6 +21,8 @@ import com.tetriskhronos.controller.GameLoopThread;
 import com.tetriskhronos.model.Game;
 import com.tetriskhronos.view.renderers.FieldPane;
 import com.tetriskhronos.view.renderers.BoardRenderer;
+import com.tetriskhronos.audio.MusicManager;
+import com.tetriskhronos.audio.SoundEffects;
 import java.util.Optional;
 
 public class GamePanel extends BorderPane {
@@ -113,6 +115,12 @@ public class GamePanel extends BorderPane {
                 case P -> {
                     game.togglePause();
                     updatePauseIndicator();
+                }
+                case M -> {
+                    MusicManager.getInstance().toggleMute();
+                }
+                case S -> {
+                    SoundEffects.getInstance().toggleMute();
                 }
                 case ESCAPE -> showQuitConfirm = true;
                 default -> {}
