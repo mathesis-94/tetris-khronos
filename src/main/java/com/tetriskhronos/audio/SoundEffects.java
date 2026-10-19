@@ -19,13 +19,12 @@ public class SoundEffects {
         return INSTANCE;
     }
 
-
     private void loadSounds() {
         String[] soundFiles = {
             "sounds/clear_line.wav",
-            "sounds/rotate.wav",
-            "sounds/hard_drop.wav",
-            "sounds/game_over.wav"
+            "sounds/game_over.wav",
+            "sounds/move-turn.wav",    // For rotate and drop
+            "sounds/level-up.wav"      // For extra effects
         };
 
         for (String soundFile : soundFiles) {
@@ -34,14 +33,16 @@ public class SoundEffects {
                 if (soundUrl != null) {
                     Media media = new Media(soundUrl.toExternalForm());
                     soundCache.put(soundFile, media);
+                    System.out.println("✅ Loaded: " + soundFile);
                 } else {
-                    System.err.println("Sound file not found: " + soundFile);
+                    System.err.println("❌ Sound file not found: " + soundFile);
                 }
             } catch (Exception e) {
-                System.err.println("Error loading sound " + soundFile + ": " + e.getMessage());
+                System.err.println("❌ Error loading sound " + soundFile + ": " + e.getMessage());
             }
         }
     }
+
     private void playSound(String soundFile) {
         if (muted || !soundCache.containsKey(soundFile)) {
             return;
@@ -52,7 +53,7 @@ public class SoundEffects {
             player.setVolume(0.7);
             player.play();
         } catch (Exception e) {
-            System.err.println("Error playing sound: " + e.getMessage());
+            System.err.println("❌ Error playing sound: " + e.getMessage());
         }
     }
 
@@ -61,19 +62,22 @@ public class SoundEffects {
     }
 
     public void playRotate() {
-        playSound("sounds/rotate.wav");
+        playSound("sounds/move-turn.wav");
     }
+
     public void playHardDrop() {
-        playSound("sounds/hard_drop.wav");
+        playSound("sounds/move-turn.wav");
     }
 
     public void playGameOver() {
         playSound("sounds/game_over.wav");
     }
+
     public void toggleMute() {
         muted = !muted;
-        System.out.println("Sound Effects: " + (muted ? "MUTED" : "UNMUTED"));
+        System.out.println("Sound Effects: " + (muted ? "🔇 MUTED" : "🔊 UNMUTED"));
     }
+
     public boolean isMuted() {
         return muted;
     }

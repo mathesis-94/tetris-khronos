@@ -106,10 +106,12 @@ public class GamePanel extends BorderPane {
                 }
                 case UP -> {
                     game.rotate();
+                    SoundEffects.getInstance().playRotate();
                     needsRender = true;
                 }
                 case SPACE -> {
                     game.hardDrop();
+                    SoundEffects.getInstance().playHardDrop();
                     needsRender = true;
                 }
                 case P -> {

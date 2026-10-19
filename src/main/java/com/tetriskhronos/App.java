@@ -5,6 +5,7 @@ import javafx.stage.Stage;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 
+import com.tetriskhronos.audio.MusicManager;
 import com.tetriskhronos.controller.ScreenManager;
 import com.tetriskhronos.controller.ScreenType;
 import com.tetriskhronos.model.Configuration;
@@ -32,7 +33,8 @@ public class App extends Application {
 
         // config primary stage
         configureWindow();
-
+        // start music
+        MusicManager.getInstance().play();
         // splash screen
         showSplashScreen();
     }

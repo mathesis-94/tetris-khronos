@@ -2,6 +2,7 @@ package com.tetriskhronos.model;
 
 import java.time.LocalDateTime;
 import java.util.Random;
+import com.tetriskhronos.audio.SoundEffects;
 
 public class Game {
     private final Board board;
@@ -82,10 +83,12 @@ public class Game {
         if (rowsCleared > 0) {
             lines += rowsCleared;
             addLinesToScore(rowsCleared);
+            SoundEffects.getInstance().playClearLines();
         }
 
         if (board.isGameOver()) {
             gameState = GameState.GAME_OVER;
+            SoundEffects.getInstance().playGameOver();
         } else {
             spawnNextPiece();
         }

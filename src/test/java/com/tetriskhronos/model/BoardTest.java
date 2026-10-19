@@ -22,15 +22,15 @@ class BoardTest {
 
     @BeforeEach
     void setUp() {
-        board = new Board(10, 20);
-        spyBoard = spy(new Board(10, 20));
         MockitoAnnotations.openMocks(this);
+        board = new Board(10, 20);
+
+        // spyBoard is now initialized by @Spy + openMocks (no manual spy() call)
     }
 
     @Test
     @DisplayName("Should clear board on initialization")
     void testBoardClear() {
-        // Verify all cells are empty (0)
         for (int row = 0; row < board.getHeight(); row++) {
             for (int col = 0; col < board.getWidth(); col++) {
                 assertTrue(board.isCellEmpty(row, col),
@@ -42,7 +42,6 @@ class BoardTest {
     @Test
     @DisplayName("Should detect complete rows and clear them")
     void testClearCompleteRows() {
-        // Fill bottom row completely (tetrominoId = 1)
         for (int col = 0; col < board.getWidth(); col++) {
             board.setCell(board.getHeight() - 1, col, 1);
         }
@@ -50,7 +49,6 @@ class BoardTest {
         int clearedCount = board.clearRows();
 
         assertEquals(1, clearedCount, "Should clear 1 row");
-        // Verify row is now empty
         for (int col = 0; col < board.getWidth(); col++) {
             assertTrue(board.isCellEmpty(board.getHeight() - 1, col),
                 "Cleared row should be empty");
@@ -85,18 +83,16 @@ class BoardTest {
 
         spyBoard.placeBlocks(x, y, blocks, tetrominoId);
 
-        // Verify cell is occupied (not empty)
         assertFalse(spyBoard.isCellEmpty(y, x),
             "Placed block should not be empty");
 
-        // Verify spy was called
+        // Verify spy method was called
         verify(spyBoard).placeBlocks(x, y, blocks, tetrominoId);
     }
 
     @Test
     @DisplayName("Should detect complete rows")
     void testGetCompleteRows() {
-        // Fill row 15 completely
         for (int col = 0; col < board.getWidth(); col++) {
             board.setCell(15, col, 1);
         }
