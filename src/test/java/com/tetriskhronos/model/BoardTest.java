@@ -5,8 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.Spy;
-import org.mockito.MockitoAnnotations;
+import org.mockito.Mockito;
 
 import java.util.List;
 
@@ -16,16 +15,12 @@ import static org.mockito.Mockito.*;
 @DisplayName("Board Tests")
 class BoardTest {
     private Board board;
-
-    @Spy
     private Board spyBoard;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
         board = new Board(10, 20);
-
-        // spyBoard is now initialized by @Spy + openMocks (no manual spy() call)
+        spyBoard = Mockito.spy(new Board());
     }
 
     @Test
@@ -88,6 +83,35 @@ class BoardTest {
 
         // Verify spy method was called
         verify(spyBoard).placeBlocks(x, y, blocks, tetrominoId);
+    }
+
+    @Test
+    @DisplayName("Should demonstrate Mock with predefined behavior")
+    void testMockBoardBehavior() {
+        // create mock board
+        Board mockBoard = mock(Board.class);
+        when(mockBoard.isCellEmpty(0, 5)).thenReturn(false);
+        when(mockBoard.getWidth()).thenReturn(10);
+        when(mockBoard.getHeight()).thenReturn(20);
+        when(mockBoard.isWithinBounds(5, 5)).thenReturn(true);
+        when(mockBoard.isWithinBounds(-1, -1)).thenReturn(false);
+
+        assertFalse(mockBoard.isCellEmpty(0, 5),
+            "Mock should return false for top row");
+        assertEquals(10, mockBoard.getWidth(),
+            "Mock should return width of 10");
+        assertEquals(20, mockBoard.getHeight(),
+            "Mock should return height of 20");
+        assertTrue(mockBoard.isWithinBounds(5, 5),
+            "Mock should return true for valid coordinates");
+        assertFalse(mockBoard.isWithinBounds(-1, -1),
+            "Mock should return false for invalid coordinates");
+
+        // verify interactions
+        verify(mockBoard).isCellEmpty(0, 5);
+        verify(mockBoard, times(1)).getWidth();
+        verify(mockBoard, times(1)).getHeight();
+        verify(mockBoard, times(2)).isWithinBounds(anyInt(), anyInt());
     }
 
     @Test

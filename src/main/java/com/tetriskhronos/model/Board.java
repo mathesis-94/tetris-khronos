@@ -8,9 +8,16 @@ import java.util.List;
  * Handle piece placement, collision detection, line clearing, state queries
  */
 public class Board {
-    private final int width;
-    private final int height;
-    private final int[][] grid; // 0 = empty, 1-7 = tetromino type (or color)
+    private int width;        // Changed: removed 'final'
+    private int height;       // Changed: removed 'final'
+    private int[][] grid;     // Changed: removed 'final'
+
+    /**
+     * No-arg constructor for default 10x20 board (required for Mockito @Spy)
+     */
+    public Board() {
+        this(10, 20);
+    }
 
     public Board(int width, int height) {
         this.width = width;
@@ -93,7 +100,6 @@ public class Board {
         return completeRows;
     }
 
-
     public int clearRows() {
         List<Integer> completeRows = getCompleteRows();
         for (Integer rowIndex : completeRows) {
@@ -104,7 +110,7 @@ public class Board {
                 grid[0][col] = 0;
             }
         }
-        return completeRows.size();  // Return count instead
+        return completeRows.size();
     }
 
     /* game over check  */

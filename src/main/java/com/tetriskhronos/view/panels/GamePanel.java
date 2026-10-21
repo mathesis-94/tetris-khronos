@@ -19,6 +19,9 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import com.tetriskhronos.controller.GameLoopThread;
 import com.tetriskhronos.model.Game;
+import com.tetriskhronos.model.Configuration;
+import com.tetriskhronos.model.Tetromino;
+import com.tetriskhronos.ai.SimpleAIPlayer;
 import com.tetriskhronos.view.renderers.FieldPane;
 import com.tetriskhronos.view.renderers.BoardRenderer;
 import com.tetriskhronos.audio.MusicManager;
@@ -33,9 +36,22 @@ public class GamePanel extends BorderPane {
     private GameLoopThread gameLoopThread;
     private boolean showQuitConfirm = false;
 
+    // AI Integration
+    private SimpleAIPlayer aiPlayer;
+    private boolean aiEnabled;
+    private long lastAIMoveTime = 0;
+    private static final long AI_MOVE_DELAY = 500_000_000; // 500ms in nanoseconds
+
     public GamePanel(Game game, Runnable onExit) {
         this.game = game;
         this.onExit = onExit;
+
+        // Initialize AI
+        this.aiEnabled = Configuration.getInstance().isAiPlayEnabled();
+        if (aiEnabled) {
+            this.aiPlayer = new SimpleAIPlayer(game);
+            System.out.println("✅ AI Player enabled");
+        }
 
         // Calculate cell size dynamically based on window (we'll use default for now)
         int cellSize = 30;
@@ -65,11 +81,6 @@ public class GamePanel extends BorderPane {
         gameField.setMaxWidth(400);
         gameField.setMaxHeight(700);
 
-        // old binding lines
-        // fieldPane.prefWidthProperty().bind(gameField.widthProperty());
-        // fieldPane.prefHeightProperty().bind(gameField.heightProperty());
-
-
         // vbox wrap grow
         VBox centerBox = new VBox(gameField);
         centerBox.setStyle("-fx-background-color: #1a1a1a;");
@@ -77,7 +88,8 @@ public class GamePanel extends BorderPane {
         setCenter(centerBox);
 
         // Bottom: instructions
-        Label instructions = new Label("← → Move | ↓ Speed Up | ↑ Rotate | Space Hard Drop | P Pause | ESC Quit to Menu");
+        String aiIndicator = aiEnabled ? " | 🤖 AI: ON" : "";
+        Label instructions = new Label("← → Move | ↓ Speed Up | ↑ Rotate | Space Hard Drop | P Pause | M Music | S Sound | ESC Quit" + aiIndicator);
         instructions.setTextFill(Color.web("#888888"));
         instructions.setFont(new Font("Arial", 11));
         instructions.setPadding(new Insets(10));
@@ -94,14 +106,17 @@ public class GamePanel extends BorderPane {
             switch (code) {
                 case LEFT -> {
                     game.moveLeft();
+                    SoundEffects.getInstance().playMove();
                     needsRender = true;
                 }
                 case RIGHT -> {
                     game.moveRight();
+                    SoundEffects.getInstance().playMove();
                     needsRender = true;
                 }
                 case DOWN -> {
                     game.moveDown();
+                    SoundEffects.getInstance().playMove();
                     needsRender = true;
                 }
                 case UP -> {
@@ -120,9 +135,11 @@ public class GamePanel extends BorderPane {
                 }
                 case M -> {
                     MusicManager.getInstance().toggleMute();
+                    System.out.println(MusicManager.getInstance().isMuted() ? "🔇 Music OFF" : "🔊 Music ON");
                 }
                 case S -> {
                     SoundEffects.getInstance().toggleMute();
+                    System.out.println(SoundEffects.getInstance().isMuted() ? "🔇 Sound Effects OFF" : "🔊 Sound Effects ON");
                 }
                 case ESCAPE -> showQuitConfirm = true;
                 default -> {}
@@ -136,7 +153,6 @@ public class GamePanel extends BorderPane {
         });
     }
 
-
     private void updatePauseIndicator() {
         pauseIndicator.setVisible(game.isPaused());
         fieldPane.render(game);
@@ -145,6 +161,15 @@ public class GamePanel extends BorderPane {
     public void startGameLoop() {
         if (gameLoopThread == null || !gameLoopThread.isRunning()) {
             gameLoopThread = new GameLoopThread(game, () -> {
+                // Execute AI move if enabled
+                if (aiEnabled && aiPlayer != null && !game.isPaused() && !game.isGameOver()) {
+                    long now = System.nanoTime();
+                    if (now - lastAIMoveTime > AI_MOVE_DELAY) {
+                        executeAIMove();
+                        lastAIMoveTime = now;
+                    }
+                }
+
                 fieldPane.render(game);
 
                 // Handle quit confirmation on FX thread
@@ -156,6 +181,27 @@ public class GamePanel extends BorderPane {
             gameLoopThread.start();
         }
     }
+
+    private void executeAIMove() {
+        try {
+            if (aiPlayer == null) {
+                return;
+            }
+
+            // Use the existing SimpleAIPlayer API
+            String bestMove = aiPlayer.decideBestMove();
+            if (bestMove != null) {
+                aiPlayer.executeMove(bestMove);
+
+                System.out.println("🤖 AI Move: " + bestMove +
+                        ", Score: " + aiPlayer.getScore() +
+                        ", Lines: " + aiPlayer.getLines());
+            }
+        } catch (Exception e) {
+            System.err.println("❌ AI Error: " + e.getMessage());
+        }
+    }
+
 
     private void showQuitDialog() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);

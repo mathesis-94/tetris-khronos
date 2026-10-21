@@ -69,6 +69,10 @@ public class SoundEffects {
         playSound("sounds/move-turn.wav");
     }
 
+    public void playMove() {
+        playSound("sounds/move-turn.wav");
+    }
+
     public void playGameOver() {
         playSound("sounds/game_over.wav");
     }

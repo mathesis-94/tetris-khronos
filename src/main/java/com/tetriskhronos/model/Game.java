@@ -172,6 +172,10 @@ public class Game {
         return gameState == GameState.PAUSED;
     }
 
+    public boolean isGameOver() {
+        return gameState == GameState.GAME_OVER;
+    }
+
     public Board getBoard() {
         return board;
     }

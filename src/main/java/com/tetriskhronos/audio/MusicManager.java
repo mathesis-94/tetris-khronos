@@ -23,29 +23,62 @@ public class MusicManager {
             URL musicUrl = getClass().getClassLoader().getResource(MUSIC_FILE);
             if (musicUrl == null) {
                 System.err.println("❌ Music file not found: " + MUSIC_FILE);
+                tryLoadFallback();
                 return;
             }
+
             Media media = new Media(musicUrl.toExternalForm());
             this.mediaPlayer = new MediaPlayer(media);
             this.mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
             this.mediaPlayer.setVolume(0.5);
-            System.out.println("✅ Music loaded successfully from: " + MUSIC_FILE);
+
+            // Add error handler
+            mediaPlayer.setOnError(() -> {
+                System.err.println("❌ Media error: " + mediaPlayer.getError());
+                tryLoadFallback();
+            });
+
+            System.out.println("✅ Music loaded: " + MUSIC_FILE);
         } catch (Exception e) {
             System.err.println("❌ Error loading music: " + e.getMessage());
-            e.printStackTrace();
+            tryLoadFallback();
+        }
+    }
+
+    private void tryLoadFallback() {
+        try {
+            URL fallbackUrl = getClass().getClassLoader().getResource("clear_line.wav");
+            if (fallbackUrl != null) {
+                Media fallback = new Media(fallbackUrl.toExternalForm());
+                this.mediaPlayer = new MediaPlayer(fallback);
+                this.mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
+                this.mediaPlayer.setVolume(0.3);
+                System.out.println("✅ Fallback audio loaded: clear_line.wav");
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Fallback also failed: " + e.getMessage());
         }
     }
 
     public void play() {
         if (mediaPlayer != null && !muted) {
-            System.out.println("▶️ Playing music...");
-            mediaPlayer.play();
+            try {
+                mediaPlayer.play();
+                System.out.println("▶️ Music playing...");
+            } catch (Exception e) {
+                System.err.println("❌ Error playing music: " + e.getMessage());
+            }
         }
     }
 
     public void stop() {
         if (mediaPlayer != null) {
-            mediaPlayer.stop();
+            try {
+                mediaPlayer.stop();
+                System.out.println("⏹️ Music stopped");
+            } catch (Exception e) {
+                System.err.println("❌ Error stopping music: " + e.getMessage());
+            }
         }
     }
 

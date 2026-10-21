@@ -69,7 +69,7 @@ public class SimpleAIPlayer {
     }
 
 
-    private String decideBestMove() {
+    public String decideBestMove() {
         Board board = game.getBoard();
 
         int scoreLeft = evaluateMove("left");
@@ -158,7 +158,7 @@ public class SimpleAIPlayer {
     }
 
 
-    private void executeMove(String move) {
+    public void executeMove(String move) {
         try {
             switch (move.toLowerCase()) {
                 case "left":
