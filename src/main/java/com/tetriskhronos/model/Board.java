@@ -127,6 +127,9 @@ public class Board {
     public int[][] getGrid() {
         return grid;
     }
+    public int[][] getCells() {
+        return grid;
+    }
 
     public int getWidth() {
         return width;

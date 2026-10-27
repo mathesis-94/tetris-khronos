@@ -2,8 +2,10 @@ package com.tetriskhronos.view;
 
 import javafx.geometry.Insets;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import com.tetriskhronos.controller.ScreenManager;
 import com.tetriskhronos.controller.ScreenType;
+import com.tetriskhronos.networking.ExternalServerClient;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.layout.VBox;
@@ -13,15 +15,17 @@ import javafx.scene.control.Label;
 public class MainMenuScreen extends Screen {
     private final Scene scene;
     private final ScreenManager screenManager;
+    private final ExternalServerClient serverClient;
 
     public MainMenuScreen(ScreenManager screenManager) {
         super(screenManager.getPrimaryStage());
         this.screenManager = screenManager;
+        this.serverClient = new ExternalServerClient();
 
-        BorderPane root = new BorderPane();  // Changed from VBox to BorderPane
+        BorderPane root = new BorderPane();
         root.setStyle("-fx-background-color: #1a1a1a;");
 
-        VBox centerBox = new VBox(20);  // Separate VBox for center content
+        VBox centerBox = new VBox(20);
         centerBox.setAlignment(Pos.CENTER);
 
         Label titleLabel = new Label("TETRIS KHRONOS");
@@ -46,16 +50,31 @@ public class MainMenuScreen extends Screen {
         centerBox.getChildren().addAll(titleLabel, playButton, configButton, scoresButton, exitButton);
         root.setCenter(centerBox);
 
+        // Bottom section with author and server status
+        VBox bottomBox = new VBox(8);
+        bottomBox.setAlignment(Pos.CENTER);
+        bottomBox.setPadding(new Insets(15));
+
         Label authorLabel = new Label("By Mathesis");
         authorLabel.setStyle("-fx-text-fill: #666666; -fx-font-size: 11;");
-        VBox bottomBox = new VBox(authorLabel);
-        bottomBox.setAlignment(Pos.CENTER);
-        bottomBox.setPadding(new javafx.geometry.Insets(15));  // Add import
-        root.setBottom(bottomBox);  // Now this works with BorderPane
+
+        // Server status indicator
+        Label serverStatusLabel = new Label();
+        boolean serverRunning = serverClient.isServerRunning();
+
+        if (serverRunning) {
+            serverStatusLabel.setText("✓ External Server: RUNNING");
+            serverStatusLabel.setStyle("-fx-font-size: 11; -fx-text-fill: #00dd00;");
+        } else {
+            serverStatusLabel.setText("⚠ External Server: NOT RUNNING");
+            serverStatusLabel.setStyle("-fx-font-size: 11; -fx-text-fill: #dd8800;");
+        }
+
+        bottomBox.getChildren().addAll(authorLabel, serverStatusLabel);
+        root.setBottom(bottomBox);
 
         this.scene = new Scene(root, 600, 700);
     }
-
 
     @Override
     public void show() {}
