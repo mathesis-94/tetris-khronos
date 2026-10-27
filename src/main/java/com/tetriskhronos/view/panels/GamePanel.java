@@ -90,7 +90,7 @@ public class GamePanel extends BorderPane {
         setCenter(centerBox);
 
         // Bottom: instructions
-        String aiIndicator = aiEnabled ? " | 🤖 AI: ON" : "";
+        String aiIndicator = aiEnabled ? " | AI: ON" : "";
         Label instructions = new Label("← → Move | ↓ Speed Up | ↑ Rotate | Space Hard Drop | P Pause | M Music | S Sound | ESC Quit" + aiIndicator);
         instructions.setTextFill(Color.web("#888888"));
         instructions.setFont(new Font("Arial", 11));
@@ -200,12 +200,15 @@ public class GamePanel extends BorderPane {
             }
 
             // Use the existing SimpleAIPlayer API
-            String bestMove = aiPlayer.decideBestMove();
+            SimpleAIPlayer.AIMove bestMove = aiPlayer.findBestMove();
             if (bestMove != null) {
-                aiPlayer.executeMove(bestMove);
+                aiPlayer.executeMoveSequence(bestMove);
 
-                System.out.println("🤖 AI Move: " + bestMove +
-                        ", Score: " + aiPlayer.getScore() +
+
+                System.out.println("AI Move: rotation=" + bestMove.rotation +
+                        ", col=" + bestMove.column +
+                        ", score=" + bestMove.score +
+                        " | Game Score: " + aiPlayer.getScore() +
                         ", Lines: " + aiPlayer.getLines());
             }
         } catch (Exception e) {

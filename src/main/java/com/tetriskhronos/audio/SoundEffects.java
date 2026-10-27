@@ -8,7 +8,7 @@ import java.util.Map;
 
 public class SoundEffects {
     private static final SoundEffects INSTANCE = new SoundEffects();
-    private final Map<String, Media> soundCache = new HashMap<>();
+    private final Map<String, MediaPlayer> playerCache = new HashMap<>();
     private boolean muted = false;
 
     private SoundEffects() {
@@ -23,8 +23,8 @@ public class SoundEffects {
         String[] soundFiles = {
             "sounds/clear_line.wav",
             "sounds/game_over.wav",
-            "sounds/move-turn.wav",    // For rotate and drop
-            "sounds/level-up.wav"      // For extra effects
+            "sounds/move-turn.wav",
+            "sounds/level-up.wav"
         };
 
         for (String soundFile : soundFiles) {
@@ -32,8 +32,10 @@ public class SoundEffects {
                 URL soundUrl = getClass().getClassLoader().getResource(soundFile);
                 if (soundUrl != null) {
                     Media media = new Media(soundUrl.toExternalForm());
-                    soundCache.put(soundFile, media);
-                    System.out.println("✅ Loaded: " + soundFile);
+                    MediaPlayer player = new MediaPlayer(media);
+                    player.setVolume(0.7);
+                    playerCache.put(soundFile, player);
+                    System.out.println("Loaded: " + soundFile);
                 } else {
                     System.err.println("❌ Sound file not found: " + soundFile);
                 }
@@ -44,13 +46,12 @@ public class SoundEffects {
     }
 
     private void playSound(String soundFile) {
-        if (muted || !soundCache.containsKey(soundFile)) {
+        if (muted || !playerCache.containsKey(soundFile)) {
             return;
         }
         try {
-            Media media = soundCache.get(soundFile);
-            MediaPlayer player = new MediaPlayer(media);
-            player.setVolume(0.7);
+            MediaPlayer player = playerCache.get(soundFile);
+            player.stop();  // Reset to beginning
             player.play();
         } catch (Exception e) {
             System.err.println("❌ Error playing sound: " + e.getMessage());
@@ -79,7 +80,7 @@ public class SoundEffects {
 
     public void toggleMute() {
         muted = !muted;
-        System.out.println("Sound Effects: " + (muted ? "🔇 MUTED" : "🔊 UNMUTED"));
+        System.out.println("Sound Effects: " + (muted ? "MUTED" : "UNMUTED"));
     }
 
     public boolean isMuted() {

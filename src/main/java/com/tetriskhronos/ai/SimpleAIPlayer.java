@@ -4,28 +4,16 @@ import com.tetriskhronos.model.Board;
 import com.tetriskhronos.model.Game;
 import com.tetriskhronos.model.GameState;
 
-/**
- * Greedy AI for autonomous Tetris play
- *
- * Strategy:
- * 1. Evaluate 4 moves: left, right, rotate, drop
- * 2. Score each based on:
- *    - Lines cleared (highest priority)
- *    - Board height (prefer lower fills)
- *    - Holes created (penalize gaps)
- * 3. Execute best move
- * 4. Target: 500+ points (5+ line clears)
- */
+
 public class SimpleAIPlayer {
     private final Game game;
-    private int moveDelayMs = 150; // Deliberate delay for visibility
+    private int moveDelayMs = 150;
     private volatile boolean running = false;
     private volatile boolean thinking = false;
 
     public SimpleAIPlayer(Game game) {
         this.game = game;
     }
-
 
     public void startPlaying() {
         running = true;
@@ -34,27 +22,26 @@ public class SimpleAIPlayer {
         aiThread.setDaemon(true);
         aiThread.setName("SimpleAIPlayer");
         aiThread.start();
-        System.out.println("🤖 SimpleAIPlayer started");
+        System.out.println("SimpleAIPlayer started");
     }
 
     public void stopPlaying() {
         running = false;
-        System.out.println("🛑 SimpleAIPlayer stopped");
+        System.out.println("SimpleAIPlayer stopped");
     }
 
     public boolean isThinking() {
         return thinking;
     }
 
-
     private void playLoop() {
         while (running && game.getGameState() == GameState.RUNNING) {
             try {
                 thinking = true;
 
-                String bestMove = decideBestMove();
+                AIMove bestMove = findBestMove();
                 if (bestMove != null) {
-                    executeMove(bestMove);
+                    executeMoveSequence(bestMove);
                 }
 
                 thinking = false;
@@ -65,87 +52,139 @@ public class SimpleAIPlayer {
                 break;
             }
         }
-        System.out.println("🎮 AI game loop ended. Final score: " + game.getPoints());
+        System.out.println("AI game loop ended. Final score: " + game.getPoints());
     }
 
-
-    public String decideBestMove() {
+    /**
+     * Evaluates all possible placements (rotations × columns)
+     * and returns the best one
+     */
+    public AIMove findBestMove() {
         Board board = game.getBoard();
+        int bestScore = Integer.MIN_VALUE;
+        AIMove bestMove = null;
 
-        int scoreLeft = evaluateMove("left");
-        int scoreRight = evaluateMove("right");
-        int scoreRotate = evaluateMove("rotate");
-        int scoreDrop = evaluateMove("drop");
+        // Try all 4 rotation states
+        for (int rotation = 0; rotation < 4; rotation++) {
+            // Try all column positions
+            for (int col = 0; col < board.getWidth(); col++) {
+                int score = evaluatePlacement(rotation, col);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMove = new AIMove(rotation, col, score);
+                }
+            }
+        }
 
-        int maxScore = Math.max(Math.max(scoreLeft, scoreRight),
-                               Math.max(scoreRotate, scoreDrop));
-
-        if (maxScore == scoreLeft) return "left";
-        if (maxScore == scoreRight) return "right";
-        if (maxScore == scoreRotate) return "rotate";
-        if (maxScore == scoreDrop) return "drop";
-
-        return "drop";
+        if (bestMove != null) {
+            System.out.println("AI Move: rotation=" + bestMove.rotation +
+                             ", col=" + bestMove.column + ", score=" + bestMove.score);
+        }
+        return bestMove;
     }
 
-
-    private int evaluateMove(String move) {
+    /**
+     * Simulates placing the piece at a given rotation and column,
+     * then evaluates the resulting board
+     */
+    private int evaluatePlacement(int targetRotation, int targetColumn) {
         try {
-            int originalPoints = game.getPoints();
-            int originalLines = game.getLines();
-
-            Board board = game.getBoard();
-            int currentPieceX = game.getCurrentPiece().getX();
-            int currentPieceY = game.getCurrentPiece().getY();
+            // Create a copy of the board for simulation
+            Board testBoard = copyBoard(game.getBoard());
+            int currentX = game.getCurrentPiece().getX();
+            int currentY = game.getCurrentPiece().getY();
+            int currentRotation = game.getCurrentPiece().getRotationState();
             int[][] currentBlocks = game.getCurrentPiece().getBlocks();
 
-            boolean canExecute = false;
-            switch (move.toLowerCase()) {
-                case "left":
-                    canExecute = board.canPlaceBlocks(
-                        currentPieceX - 1, currentPieceY, currentBlocks);
-                    break;
-                case "right":
-                    canExecute = board.canPlaceBlocks(
-                        currentPieceX + 1, currentPieceY, currentBlocks);
-                    break;
-                case "rotate":
-                    int[][] rotated = game.getCurrentPiece().getRotatedBlocks();
-                    canExecute = board.canPlaceBlocks(
-                        currentPieceX, currentPieceY, rotated);
-                    break;
-                case "drop":
-                    canExecute = true;
-                    break;
+            // Simulate rotating to target rotation
+            int[][] blocks = currentBlocks;
+            for (int i = 0; i < targetRotation - currentRotation; i++) {
+                blocks = game.getCurrentPiece().getRotatedBlocks();
             }
 
-            int score = 0;
-            if (canExecute) {
-                score += 10;
-                if ("drop".equals(move)) {
-                    score += 50;
+            // Check if placement is valid
+            if (!testBoard.canPlaceBlocks(targetColumn, currentY, blocks)) {
+                return Integer.MIN_VALUE;  // Invalid placement
+            }
+
+            // Find drop position
+            int dropY = currentY;
+            while (testBoard.canPlaceBlocks(targetColumn, dropY + 1, blocks)) {
+                dropY++;
+            }
+
+            // Place the piece on test board
+            for (int[] block : blocks) {
+                int row = dropY + block[0];
+                int col = targetColumn + block[1];
+                if (row >= 0 && row < testBoard.getHeight() &&
+                    col >= 0 && col < testBoard.getWidth()) {
+                    testBoard.setCell(row, col, 1);
                 }
-
-                // Prefer moves toward center (reduce extremes)
-                int distFromCenter = Math.abs(currentPieceX - (board.getWidth() / 2));
-                score += (20 - distFromCenter);
             }
 
-            // Check board height (prefer lower pieces)
-            int boardHeight = calculateBoardHeight(board);
-            if (boardHeight < board.getHeight() / 2) {
-                score += 15; // Reward if board stays low
-            }
+            // Clear lines and count them
+            int linesCleared = testBoard.clearRows();
 
+            // Evaluate the resulting board
+            int score = evaluateBoard(testBoard, linesCleared);
             return score;
 
         } catch (Exception e) {
-            System.err.println("⚠️ Error evaluating move " + move + ": " + e.getMessage());
-            return 0;
+            System.err.println("Error evaluating placement: " + e.getMessage());
+            return Integer.MIN_VALUE;
         }
     }
 
+    /**
+     * Scores a board state based on:
+     * - Lines cleared (highest weight)
+     * - Holes (heavily penalized)
+     * - Height (lower is better)
+     * - Bumpiness (uneven surfaces penalized)
+     */
+    private int evaluateBoard(Board board, int linesCleared) {
+        int score = 0;
 
+        // Reward line clears heavily
+        score += linesCleared * 1000;
+
+        // Penalize holes
+        int holes = countHoles(board);
+        score -= holes * 500;
+
+        // Penalize height
+        int height = calculateBoardHeight(board);
+        score -= height * 1;
+
+        // Penalize bumpiness (uneven surface)
+        int bumpiness = calculateBumpiness(board);
+        score -= bumpiness * 50;
+
+        return score;
+    }
+
+    /**
+     * Counts holes: filled cells with empty cells below them
+     */
+    private int countHoles(Board board) {
+        int holes = 0;
+        for (int col = 0; col < board.getWidth(); col++) {
+            boolean foundFilled = false;
+            for (int row = 0; row < board.getHeight(); row++) {
+                if (!board.isCellEmpty(row, col)) {
+                    foundFilled = true;
+                } else if (foundFilled && board.isCellEmpty(row, col)) {
+                    holes++;
+                }
+            }
+        }
+        return holes;
+    }
+
+    /**
+     * Calculates the height of the highest filled cell
+     */
     private int calculateBoardHeight(Board board) {
         for (int row = 0; row < board.getHeight(); row++) {
             for (int col = 0; col < board.getWidth(); col++) {
@@ -157,29 +196,79 @@ public class SimpleAIPlayer {
         return 0;
     }
 
+    /**
+     * Calculates bumpiness: sum of height differences between adjacent columns
+     */
+    private int calculateBumpiness(Board board) {
+        int[] columnHeights = new int[board.getWidth()];
 
-    public void executeMove(String move) {
-        try {
-            switch (move.toLowerCase()) {
-                case "left":
-                    game.moveLeft();
+        for (int col = 0; col < board.getWidth(); col++) {
+            for (int row = 0; row < board.getHeight(); row++) {
+                if (!board.isCellEmpty(row, col)) {
+                    columnHeights[col] = board.getHeight() - row;
                     break;
-                case "right":
-                    game.moveRight();
-                    break;
-                case "rotate":
-                    game.rotate();
-                    break;
-                case "drop":
-                    game.hardDrop();
-                    break;
+                }
             }
-            game.update();
-        } catch (Exception e) {
-            System.err.println("❌ Error executing move: " + e.getMessage());
         }
+
+        int bumpiness = 0;
+        for (int i = 0; i < columnHeights.length - 1; i++) {
+            bumpiness += Math.abs(columnHeights[i] - columnHeights[i + 1]);
+        }
+        return bumpiness;
     }
 
+    /**
+     * Creates a deep copy of the board for simulation
+     */
+    private Board copyBoard(Board original) {
+        Board copy = new Board(original.getWidth(), original.getHeight());
+        for (int row = 0; row < original.getHeight(); row++) {
+            for (int col = 0; col < original.getWidth(); col++) {
+                if (!original.isCellEmpty(row, col)) {
+                    copy.setCell(row, col, 1);
+                }
+            }
+        }
+        return copy;
+    }
+
+    /**
+     * Executes the move sequence: rotations, then horizontal movement, then drop
+     */
+    public void executeMoveSequence(AIMove move) {
+        try {
+            // Rotate to target rotation
+            int currentRotation = game.getCurrentPiece().getRotationState();
+            for (int i = 0; i < move.rotation - currentRotation; i++) {
+                game.rotate();
+                game.update();
+                Thread.sleep(50);
+            }
+
+            // Move horizontally to target column
+            int currentX = game.getCurrentPiece().getX();
+            while (currentX < move.column) {
+                game.moveRight();
+                game.update();
+                currentX++;
+                Thread.sleep(30);
+            }
+            while (currentX > move.column) {
+                game.moveLeft();
+                game.update();
+                currentX--;
+                Thread.sleep(30);
+            }
+
+            // Hard drop
+            game.hardDrop();
+            game.update();
+
+        } catch (Exception e) {
+            System.err.println("Error executing move: " + e.getMessage());
+        }
+    }
 
     public void setMoveDelayMs(int delayMs) {
         this.moveDelayMs = Math.max(50, delayMs);
@@ -193,6 +282,20 @@ public class SimpleAIPlayer {
         return game.getLines();
     }
 
+    /**
+     * Helper class to store AI move decision
+     */
+    public static class AIMove {
+        public int rotation;
+        public int column;
+        public int score;
+
+        public AIMove(int rotation, int column, int score) {
+            this.rotation = rotation;
+            this.column = column;
+            this.score = score;
+        }
+    }
 
     public static void main(String[] args) {
         System.out.println("SimpleAIPlayer test mode");

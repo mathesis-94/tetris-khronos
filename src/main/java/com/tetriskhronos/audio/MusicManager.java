@@ -86,10 +86,10 @@ public class MusicManager {
         muted = !muted;
         if (muted) {
             stop();
-            System.out.println("🔇 Music: MUTED");
+            System.out.println("Music: MUTED");
         } else {
             play();
-            System.out.println("🔊 Music: UNMUTED");
+            System.out.println("Music: UNMUTED");
         }
     }
 
