@@ -8,7 +8,7 @@ public class MusicManager {
     private static final MusicManager INSTANCE = new MusicManager();
     private MediaPlayer mediaPlayer;
     private boolean muted = false;
-    private static final String MUSIC_FILE = "sounds/background.mp3";
+    private static final String MUSIC_FILE = "sounds/background.wav";
 
     private MusicManager() {
         loadMusic();
@@ -38,9 +38,9 @@ public class MusicManager {
                 tryLoadFallback();
             });
 
-            System.out.println("✅ Music loaded: " + MUSIC_FILE);
+            System.out.println("Music loaded: " + MUSIC_FILE);
         } catch (Exception e) {
-            System.err.println("❌ Error loading music: " + e.getMessage());
+            System.err.println("Error loading music: " + e.getMessage());
             tryLoadFallback();
         }
     }
@@ -53,7 +53,7 @@ public class MusicManager {
                 this.mediaPlayer = new MediaPlayer(fallback);
                 this.mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
                 this.mediaPlayer.setVolume(0.3);
-                System.out.println("✅ Fallback audio loaded: clear_line.wav");
+                System.out.println("Fallback audio loaded: clear_line.wav");
             }
         } catch (Exception e) {
             System.err.println("❌ Fallback also failed: " + e.getMessage());

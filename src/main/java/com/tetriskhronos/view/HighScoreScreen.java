@@ -1,5 +1,7 @@
 package com.tetriskhronos.view;
-
+import java.util.List;
+import com.tetriskhronos.model.Score;
+import com.tetriskhronos.persistence.ScoreRepository;
 import com.tetriskhronos.controller.ScreenManager;
 import com.tetriskhronos.controller.ScreenType;
 import javafx.scene.Scene;
@@ -53,14 +55,10 @@ public class HighScoreScreen extends Screen {
         scoresContainer.getChildren().clear();
 
         try {
-            // Load highscores.json
-            String jsonContent = new String(Files.readAllBytes(
-                Paths.get("src/main/resources/highscores.json")
-            ));
+            // Use ScoreRepository instead of reading directly
+            List<Score> topScores = ScoreRepository.getInstance().getTopScores(10);
 
-            JSONArray scoresArray = new JSONArray(jsonContent);
-
-            if (scoresArray.length() == 0) {
+            if (topScores.isEmpty()) {
                 Label noScoresLabel = new Label("No scores yet");
                 noScoresLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 16;");
                 scoresContainer.getChildren().add(noScoresLabel);
@@ -71,13 +69,15 @@ public class HighScoreScreen extends Screen {
             HBox header = createScoreRow("#", "PLAYER", "SCORE", true);
             scoresContainer.getChildren().add(header);
 
-            // Add score rows (limit to 10)
-            for (int i = 0; i < Math.min(scoresArray.length(), 10); i++) {
-                JSONObject entry = scoresArray.getJSONObject(i);
-                String name = entry.getString("name");
-                int score = entry.getInt("score");
-
-                HBox scoreRow = createScoreRow(String.valueOf(i + 1), name, String.valueOf(score), false);
+            // Add score rows
+            for (int i = 0; i < topScores.size(); i++) {
+                Score score = topScores.get(i);
+                HBox scoreRow = createScoreRow(
+                    String.valueOf(i + 1),
+                    score.playerName(),
+                    String.valueOf(score.points()),
+                    false
+                );
                 scoresContainer.getChildren().add(scoreRow);
             }
 

@@ -1,5 +1,7 @@
 package com.tetriskhronos.view.panels;
 
+import javafx.scene.control.TextInputDialog;
+import com.tetriskhronos.persistence.ScoreRepository;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.input.KeyCode;
@@ -50,7 +52,7 @@ public class GamePanel extends BorderPane {
         this.aiEnabled = Configuration.getInstance().isAiPlayEnabled();
         if (aiEnabled) {
             this.aiPlayer = new SimpleAIPlayer(game);
-            System.out.println("✅ AI Player enabled");
+            System.out.println("AI Player enabled");
         }
 
         // Calculate cell size dynamically based on window (we'll use default for now)
@@ -146,17 +148,19 @@ public class GamePanel extends BorderPane {
             }
 
             if (needsRender) {
-                fieldPane.render(game);
+                Platform.runLater(() -> fieldPane.render(game));
             }
 
             event.consume();
         });
     }
 
+
     private void updatePauseIndicator() {
         pauseIndicator.setVisible(game.isPaused());
-        fieldPane.render(game);
+        Platform.runLater(() -> fieldPane.render(game));
     }
+
 
     public void startGameLoop() {
         if (gameLoopThread == null || !gameLoopThread.isRunning()) {
@@ -170,7 +174,12 @@ public class GamePanel extends BorderPane {
                     }
                 }
 
-                fieldPane.render(game);
+                Platform.runLater(() -> fieldPane.render(game));
+
+                // Check if game is over
+                if (game.isGameOver()) {
+                    Platform.runLater(this::showGameOverDialog);
+                }
 
                 // Handle quit confirmation on FX thread
                 if (showQuitConfirm) {
@@ -181,6 +190,8 @@ public class GamePanel extends BorderPane {
             gameLoopThread.start();
         }
     }
+
+
 
     private void executeAIMove() {
         try {
@@ -214,6 +225,34 @@ public class GamePanel extends BorderPane {
             onExit.run();
         }
     }
+
+    private void showGameOverDialog() {
+        stopGameLoop();
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Game Over");
+        alert.setHeaderText("Game Over!");
+        alert.setContentText("Final Score: " + game.getPoints() + "\nLines Cleared: " + game.getLines());
+
+        // Create a dialog with name input
+        javafx.scene.control.TextInputDialog nameDialog = new javafx.scene.control.TextInputDialog("Player");
+        nameDialog.setTitle("Save Score");
+        nameDialog.setHeaderText("Enter your name:");
+        nameDialog.setContentText("Name:");
+
+        Optional<String> result = nameDialog.showAndWait();
+        if (result.isPresent() && !result.get().isBlank()) {
+            String playerName = result.get();
+            com.tetriskhronos.persistence.ScoreRepository.getInstance()
+                .saveScore(playerName, game.getPoints());
+            System.out.println("Score saved: " + playerName + " - " + game.getPoints());
+        }
+
+        // Return to menu
+        onExit.run();
+    }
+
+
 
     public void stopGameLoop() {
         if (gameLoopThread != null && gameLoopThread.isRunning()) {
