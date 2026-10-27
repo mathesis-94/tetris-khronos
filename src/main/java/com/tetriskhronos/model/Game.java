@@ -364,6 +364,10 @@ public class Game {
         return gameState;
     }
 
+    public void setGameState(GameState gameState) {
+        this.gameState = gameState;
+    }
+
     public Tetromino getCurrentPiece() {
         return currentPiece;
     }

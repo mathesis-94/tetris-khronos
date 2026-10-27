@@ -15,7 +15,7 @@ import javafx.scene.control.Label;
 public class MainMenuScreen extends Screen {
     private final Scene scene;
     private final ScreenManager screenManager;
-    private final ExternalServerClient serverClient;
+    protected final ExternalServerClient serverClient;
 
     public MainMenuScreen(ScreenManager screenManager) {
         super(screenManager.getPrimaryStage());
@@ -33,19 +33,19 @@ public class MainMenuScreen extends Screen {
 
         Button playButton = new Button("PLAY");
         playButton.setStyle("-fx-font-size: 20; -fx-padding: 10;");
-        playButton.setOnAction(e -> screenManager.switchTo(ScreenType.PLAYING));
+        playButton.setOnAction(e -> onPlayClicked());
 
         Button configButton = new Button("CONFIGURATION");
         configButton.setStyle("-fx-font-size: 20; -fx-padding: 10;");
-        configButton.setOnAction(e -> screenManager.switchTo(ScreenType.CONFIG));
+        configButton.setOnAction(e -> onConfigClicked());
 
         Button scoresButton = new Button("HIGH SCORES");
         scoresButton.setStyle("-fx-font-size: 20; -fx-padding: 10;");
-        scoresButton.setOnAction(e -> screenManager.switchTo(ScreenType.HIGH_SCORES));
+        scoresButton.setOnAction(e -> onScoresClicked());
 
         Button exitButton = new Button("EXIT");
         exitButton.setStyle("-fx-font-size: 20; -fx-padding: 10;");
-        exitButton.setOnAction(e -> System.exit(0));
+        exitButton.setOnAction(e -> onExitClicked());
 
         centerBox.getChildren().addAll(titleLabel, playButton, configButton, scoresButton, exitButton);
         root.setCenter(centerBox);
@@ -58,7 +58,46 @@ public class MainMenuScreen extends Screen {
         Label authorLabel = new Label("By Mathesis");
         authorLabel.setStyle("-fx-text-fill: #666666; -fx-font-size: 11;");
 
-        // Server status indicator
+        Label serverStatusLabel = createServerStatusLabel();
+        bottomBox.getChildren().addAll(authorLabel, serverStatusLabel);
+        root.setBottom(bottomBox);
+
+        this.scene = new Scene(root, 600, 700);
+    }
+
+    /**
+     * Called when PLAY button is clicked.
+     */
+    protected void onPlayClicked() {
+        screenManager.switchTo(ScreenType.PLAYING);
+    }
+
+    /**
+     * Called when CONFIGURATION button is clicked.
+     */
+    protected void onConfigClicked() {
+        screenManager.switchTo(ScreenType.CONFIG);
+    }
+
+    /**
+     * Called when HIGH SCORES button is clicked.
+     */
+    protected void onScoresClicked() {
+        screenManager.switchTo(ScreenType.HIGH_SCORES);
+    }
+
+    /**
+     * Called when EXIT button is clicked.
+     */
+    protected void onExitClicked() {
+        System.exit(0);
+    }
+
+    /**
+     * Creates the server status label with appropriate styling based on server availability.
+     * @return Label displaying server status
+     */
+    protected Label createServerStatusLabel() {
         Label serverStatusLabel = new Label();
         boolean serverRunning = serverClient.isServerRunning();
 
@@ -70,10 +109,7 @@ public class MainMenuScreen extends Screen {
             serverStatusLabel.setStyle("-fx-font-size: 11; -fx-text-fill: #dd8800;");
         }
 
-        bottomBox.getChildren().addAll(authorLabel, serverStatusLabel);
-        root.setBottom(bottomBox);
-
-        this.scene = new Scene(root, 600, 700);
+        return serverStatusLabel;
     }
 
     @Override

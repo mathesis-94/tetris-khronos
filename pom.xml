@@ -20,6 +20,8 @@
         <jackson.version>2.17.1</jackson.version>
         <junit.version>5.10.2</junit.version>
         <mockito.version>5.2.0</mockito.version>
+        <testfx.version>4.0.18</testfx.version>
+        <monocle.version>21.0.2</monocle.version>
     </properties>
 
     <dependencies>
@@ -72,10 +74,10 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Mockito for instance-level mocking and spying -->
+        <!-- Mockito Inline for static mocking support (includes mockito-core functionality) -->
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
+            <artifactId>mockito-inline</artifactId>
             <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
@@ -85,6 +87,48 @@
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
             <version>${mockito.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+
+
+        <!-- TestFX Core for JavaFX testing -->
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-core</artifactId>
+            <version>${testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- TestFX JUnit 5 support -->
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-junit5</artifactId>
+            <version>${testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Monocle for headless JavaFX testing (no display required) -->
+        <dependency>
+            <groupId>org.testfx</groupId>
+            <artifactId>openjfx-monocle</artifactId>
+            <version>${monocle.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- SLF4J API (required by TestFX) -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.9</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- SLF4J Simple binding (required by TestFX) -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>2.0.9</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -113,11 +157,17 @@
                 </configuration>
             </plugin>
 
-            <!-- Maven Surefire Plugin -->
+            <!-- Maven Surefire Plugin with JavaFX headless configuration -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.6.0</version>
+                <configuration>
+                    <argLine>@{argLine} -Dtestfx.headless=true -Dprism.order=sw -Dprism.text=t2k -Djava.awt.headless=true</argLine>
+                    <systemPropertyVariables>
+                        <mockito.mock-maker>inline</mockito.mock-maker>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
 
             <!-- JaCoCo Code Coverage Plugin -->

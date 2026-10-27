@@ -8,38 +8,37 @@ import javafx.scene.Scene;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
-
 public class GameScreen extends Screen {
     private final Game game;
     private final Scene scene;
     private final GamePanel gamePanel;
     private final Stage stage;
-
-    public GameScreen(Stage stage, Game game, Runnable onBack) {
+    private final MusicManager musicManager;
+    public GameScreen(Stage stage, Game game, Runnable onBack, MusicManager musicManager) {
         super(stage);
         this.stage = stage;
         this.game = game;
+        this.musicManager = musicManager;
         this.gamePanel = new GamePanel(game, onBack);
-
         int windowWidth = 400;   // 10 cols * 40px per cell
         int windowHeight = 700;  // 20 rows * 35px per cell
-
         StackPane root = new StackPane(gamePanel);
         root.setPrefSize(windowWidth, windowHeight);
-
         scene = new Scene(root, windowWidth, windowHeight);
-
-        // Set stage size, center
         stage.setWidth(windowWidth);
         stage.setHeight(windowHeight);
         stage.centerOnScreen();
         stage.setResizable(false);
     }
 
+    public GameScreen(Stage stage, Game game, Runnable onBack) {
+        this(stage, game, onBack, MusicManager.getInstance());
+    }
+
     @Override
     public void show() {
         game.start();
-        MusicManager.getInstance().play();
+        musicManager.play();
         gamePanel.startGameLoop();
         gamePanel.requestFocus();
     }
