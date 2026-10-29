@@ -1,5 +1,6 @@
 package com.tetriskhronos.controller;
 
+import com.tetriskhronos.ai.TrainingMode;
 import com.tetriskhronos.model.Game;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -8,6 +9,9 @@ public class GameLoopThread extends Thread {
     private final Runnable renderCallback;
     private final AtomicBoolean running;
     private final long frameTime;
+
+    private TrainingMode trainingMode;
+    private boolean isTraining = false;
 
     public GameLoopThread(Game game, Runnable renderCallback) {
         this.game = game;
@@ -18,9 +22,42 @@ public class GameLoopThread extends Thread {
         setName("GameLoopThread");
     }
 
+    /**
+     * Start the game loop in normal mode (with rendering at 60 FPS)
+     */
+    public void startGameLoop() {
+        isTraining = false;
+        start();
+    }
+
+    /**
+     * Start the game loop in training mode (headless, no rendering)
+     */
+    public void startTrainingSession(int episodes, int saveInterval) {
+        isTraining = true;
+        this.trainingMode = new TrainingMode(
+            game.getAIPlayer(),
+            episodes,
+            saveInterval,
+            game
+        );
+        start();
+    }
+
     @Override
     public void run() {
         running.set(true);
+
+        if (isTraining) {
+            runTrainingMode();
+        } else {
+            runGameLoop();
+        }
+
+        running.set(false);
+    }
+
+    private void runGameLoop() {
         long lastFrameTime = System.nanoTime();
 
         while (running.get()) {
@@ -49,11 +86,24 @@ public class GameLoopThread extends Thread {
         }
     }
 
+    private void runTrainingMode() {
+        try {
+            trainingMode.runTrainingSession();
+        } catch (Exception e) {
+            System.err.println("Training mode error:");
+            e.printStackTrace();
+        }
+    }
+
     public void stopLoop() {
         running.set(false);
     }
 
     public boolean isRunning() {
         return running.get();
+    }
+
+    public boolean isInTrainingMode() {
+        return isTraining;
     }
 }

@@ -3,12 +3,12 @@ package com.tetriskhronos.model;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
 import com.tetriskhronos.audio.SoundEffects;
 import com.tetriskhronos.networking.ExternalServerClient;
 import com.tetriskhronos.model.OpMove;
-
-
-
+import com.tetriskhronos.ai.AIPlayer;
+import com.tetriskhronos.ai.Move;
 
 public class Game {
     private final Board board;
@@ -19,14 +19,18 @@ public class Game {
     private int dropCounter;
     private int dropSpeed;
     private Random random;
+    private AIPlayer aiPlayer;
+    private boolean useAIPlayer;
+    private boolean aiMoveMadeForCurrentPiece = false;
+
 
     private int points;
     private int lines;
 
-    // External server support
     private ExternalServerClient serverClient;
     private boolean serverAvailable;
     private boolean useExternalPlayer;
+    private CompletableFuture<OpMove> pendingServerMove;
 
     public Game(Configuration config) {
         this.config = config;
@@ -38,13 +42,13 @@ public class Game {
         this.lines = 0;
         this.serverAvailable = false;
         this.useExternalPlayer = false;
+        this.useAIPlayer = false;
+        this.aiPlayer = new AIPlayer();
+        this.pendingServerMove = null;
         updateDropSpeed();
         initializeExternalServer();
     }
 
-    /**
-     * Initialize connection to external server and check availability
-     */
     private void initializeExternalServer() {
         try {
             serverClient = new ExternalServerClient();
@@ -60,16 +64,20 @@ public class Game {
         }
     }
 
-    /**
-     * Check if external server is available
-     */
     public boolean isServerAvailable() {
         return serverAvailable;
     }
 
-    /**
-     * Set whether to use external player for moves
-     */
+
+    public void setUseAIPlayer(boolean useAI) {
+        this.useAIPlayer = useAI;
+        System.out.println("[Game] AI player mode: " + (useAI ? "ENABLED" : "DISABLED"));
+    }
+
+    public boolean isUsingAIPlayer() {
+        return useAIPlayer;
+    }
+
     public void setUseExternalPlayer(boolean useExternal) {
         if (useExternal && !serverAvailable) {
             System.err.println("[Game] Cannot enable external player - server not running");
@@ -96,171 +104,330 @@ public class Game {
         dropCounter = 0;
         spawnNextPiece();
         spawnNextPiece();
-    }
-
-    private void spawnNextPiece() {
-        if (currentPiece == null) {
-            currentPiece = Tetromino.createRandom(random);
-        } else {
-            currentPiece = nextPiece;
-        }
-        nextPiece = Tetromino.createRandom(random);
-
-        if (!board.canPlaceBlocks(currentPiece.getX(), currentPiece.getY(), currentPiece.getBlocks())) {
-            gameState = GameState.GAME_OVER;
+        if (useAIPlayer && config.isAiPlayEnabled()) {
+            aiPlayer.startEpisode(board);
         }
     }
 
-    public void update() {
-        if (gameState != GameState.RUNNING) {
-            return;
+    public void spawnNextPiece() {
+            if (currentPiece == null) {
+                currentPiece = Tetromino.createRandom(random);
+            } else {
+                currentPiece = nextPiece;
+            }
+            nextPiece = Tetromino.createRandom(random);
+
+            currentPiece.setX(3);
+            currentPiece.setY(0);
+
+            // Reset flag for new piece
+            aiMoveMadeForCurrentPiece = false;
+
+            System.out.println("[SPAWN] New piece: type=" + currentPiece.getType() +
+                               ", x=" + currentPiece.getX() +
+                               ", y=" + currentPiece.getY());
+
+            if (!board.canPlacePiece(currentPiece)) {
+                System.out.println("[SPAWN] GAME OVER - Cannot place new piece at spawn");
+                gameState = GameState.GAME_OVER;
+            }
         }
 
-        dropCounter++;
-        if (dropCounter >= dropSpeed) {
-            dropCounter = 0;
 
-            if (useExternalPlayer && serverAvailable) {
-                try {
-                    PureGame pureGame = convertToPureGame();
-                    if (pureGame != null) {
-                        OpMove optimalMove = serverClient.getOptimalMove(pureGame);
-                        if (optimalMove != null) {
-                            applyOptimalMove(optimalMove);
-                        } else {
-                            serverAvailable = false;
-                            moveDown(); // Fallback when server returns null
+        public void update() {
+                if (gameState != GameState.RUNNING) {
+                    return;
+                }
+                dropCounter++;
+                if (dropCounter >= dropSpeed) {
+                    dropCounter = 0;
+
+                    // AI player moves - ONLY ONCE per piece
+                    if (useAIPlayer && config.isAiPlayEnabled() && !aiMoveMadeForCurrentPiece) {
+                        if (currentPiece != null) {
+                            Move aiMove = aiPlayer.selectMove(board, currentPiece);
+                            System.out.println("[AI] Move decided: rotations=" + aiMove.rotations +
+                                             ", targetCol=" + aiMove.targetColumn +
+                                             ", currentX=" + currentPiece.getX());
+                            applyOptimalMove(aiMove);
+                            aiMoveMadeForCurrentPiece = true;  // Mark as done for this piece
                         }
-                    } else {
+                    }
+                    // External server player moves
+                    else if (useExternalPlayer && serverAvailable) {
+                        if (pendingServerMove != null && pendingServerMove.isDone()) {
+                            try {
+                                OpMove move = pendingServerMove.get();
+                                if (move != null) {
+                                    System.out.println("[Game] Applying server move: col=" + move.opX() + ", rotate=" + move.opRotate());
+                                    applyOptimalMove(move);
+                                } else {
+                                    System.out.println("[Game] Server returned null, applying gravity");
+                                    moveDown();
+                                }
+                            } catch (Exception e) {
+                                System.err.println("[Game] Error retrieving server move: " + e.getMessage());
+                                serverAvailable = false;
+                                moveDown();
+                            }
+                            pendingServerMove = null;
+                        } else if (pendingServerMove == null) {
+                            System.out.println("[Game] Queuing server request...");
+                            requestOptimalMoveAsync();
+                            moveDown();
+                        } else {
+                            System.out.println("[Game] Waiting for server response, applying gravity");
+                            moveDown();
+                        }
+                    }
+                    else {
                         moveDown();
                     }
-                } catch (IOException e) {
-                    System.err.println("[Game] Error getting optimal move: " + e.getMessage());
-                    serverAvailable = false;
-                    moveDown();
+           }
+        }
+
+
+    private void applyOptimalMove(Move move) {
+        System.out.println("[Game] Applying AI move: rotations=" + move.rotations +
+                         ", targetCol=" + move.targetColumn);
+
+        for (int i = 0; i < move.rotations; i++) {
+            currentPiece.rotate();
+            if (!board.canPlacePiece(currentPiece)) {
+                for (int j = 0; j < 3; j++) {
+                    currentPiece.rotate();
                 }
-            } else {
-                // Solo play or external player disabled: normal descent
-                moveDown();
-            }
-        }
-    }
-
-
-
-
-    /**
-     * Request optimal move from external server and apply it
-     */
-    private void makeExternalMove() {
-        try {
-            PureGame gameState = convertToPureGame();
-            if (gameState == null) {
-                moveDown();
-                return;
-            }
-
-            OpMove move = serverClient.getOptimalMove(gameState);
-            if (move != null) {
-                applyOptimalMove(move);
-            } else {
-                System.out.println("[Game] Server returned null move, falling back to moveDown");
-                moveDown();
-                serverAvailable = false;
-            }
-        } catch (Exception e) {
-            System.err.println("[Game] Error getting move from external server: " + e.getMessage());
-            serverAvailable = false;
-            moveDown();
-        }
-    }
-    private PureGame convertToPureGame() {
-        PureGame game = new PureGame();
-        game.setWidth(board.getWidth());
-        game.setHeight(board.getHeight());
-        game.setCells(board.getGrid());
-        game.setCurrentShape(currentPiece.getBlocks());
-        game.setNextShape(nextPiece.getBlocks());
-        return game;
-    }
-
-    private void applyOptimalMove(OpMove move) {
-        System.out.println("[Game] Applying optimal move: opX=" + move.opX() +
-                         ", opRotate=" + move.opRotate());
-
-        // Apply rotations
-        for (int i = 0; i < move.opRotate(); i++) {
-            int[][] rotatedBlocks = currentPiece.getRotatedBlocks();
-            if (board.canPlaceBlocks(currentPiece.getX(), currentPiece.getY(), rotatedBlocks)) {
-                currentPiece.rotate();
-            } else {
                 System.out.println("[Game] Cannot apply rotation " + (i + 1));
                 break;
             }
         }
 
-        // Move to the target X position
         int currentX = currentPiece.getX();
-        int targetX = move.opX();
+        int targetX = move.targetColumn;
 
-        if (targetX == 0) {
-            // Move to left-most position
-            while (currentX > 0 &&
-                   board.canPlaceBlocks(currentX - 1, currentPiece.getY(), currentPiece.getBlocks())) {
-                currentPiece.moveLeft();
-                currentX--;
-            }
-        } else if (targetX < currentX) {
-            // Move left
+        if (targetX < currentX) {
             for (int i = 0; i < currentX - targetX; i++) {
-                if (board.canPlaceBlocks(currentPiece.getX() - 1, currentPiece.getY(), currentPiece.getBlocks())) {
-                    currentPiece.moveLeft();
-                } else {
+                currentPiece.moveLeft();
+                if (!board.canPlacePiece(currentPiece)) {
+                    currentPiece.moveRight();
                     System.out.println("[Game] Cannot move further left");
                     break;
                 }
             }
         } else if (targetX > currentX) {
-            // Move right
             for (int i = 0; i < targetX - currentX; i++) {
-                if (board.canPlaceBlocks(currentPiece.getX() + 1, currentPiece.getY(), currentPiece.getBlocks())) {
-                    currentPiece.moveRight();
-                } else {
+                currentPiece.moveRight();
+                if (!board.canPlacePiece(currentPiece)) {
+                    currentPiece.moveLeft();
                     System.out.println("[Game] Cannot move further right");
                     break;
                 }
             }
         }
 
-        // Drop the piece
         moveDown();
     }
 
+    private void requestOptimalMoveAsync() {
+        try {
+            PureGame pureGame = toPureGame();
+            if (pureGame != null && serverClient != null) {
+                pendingServerMove = serverClient.getOptimalMoveAsync(pureGame);
+                System.out.println("[Game] Async server request queued");
+            } else {
+                moveDown();
+            }
+        } catch (Exception e) {
+            System.err.println("[Game] Error queuing async move request: " + e.getMessage());
+            serverAvailable = false;
+            moveDown();
+        }
+    }
+
+    public PureGame toPureGame() {
+        PureGame pg = new PureGame();
+        pg.setWidth(board.getWidth());
+        pg.setHeight(board.getHeight());
+
+        int[][] gridCopy = new int[board.getGrid().length][];
+        for (int i = 0; i < board.getGrid().length; i++) {
+            gridCopy[i] = board.getGrid()[i].clone();
+        }
+        pg.setCells(gridCopy);
+
+        if (currentPiece != null) {
+            pg.setCurrentShape(currentPiece.getShape());
+            pg.setCurrentX(currentPiece.getX());
+            pg.setCurrentY(currentPiece.getY());
+            pg.setCurrentRotation(currentPiece.getRotationState());
+            pg.setCurrentType(currentPiece.getType());
+        }
+
+        if (nextPiece != null) {
+            pg.setNextShape(nextPiece.getShape());
+            pg.setNextType(nextPiece.getType());
+        }
+
+        pg.setScore(points);
+        pg.setLevel(config.getGameLevel());
+        pg.setLines(lines);
+        pg.setGameTime(System.currentTimeMillis());
+
+        return pg;
+    }
+
+    @Deprecated
+    private PureGame convertToPureGame() {
+        return toPureGame();
+    }
+
+    private void applyOptimalMove(OpMove move) {
+        System.out.println("[Game] Applying optimal move: opX=" + move.opX() +
+                         ", opRotate=" + move.opRotate());
+
+        for (int i = 0; i < move.opRotate(); i++) {
+            currentPiece.rotate();
+            if (!board.canPlacePiece(currentPiece)) {
+                for (int j = 0; j < i + 1; j++) {
+                    int rotationState = currentPiece.getRotationState();
+                    for (int k = 0; k < 3; k++) {
+                        currentPiece.rotate();
+                    }
+                    if (rotationState == 0) break;
+                }
+                System.out.println("[Game] Cannot apply rotation " + (i + 1));
+                break;
+            }
+        }
+
+        int currentX = currentPiece.getX();
+        int targetX = move.opX();
+
+        if (targetX < currentX) {
+            for (int i = 0; i < currentX - targetX; i++) {
+                currentPiece.moveLeft();
+                if (!board.canPlacePiece(currentPiece)) {
+                    currentPiece.moveRight();
+                    System.out.println("[Game] Cannot move further left");
+                    break;
+                }
+            }
+        } else if (targetX > currentX) {
+            for (int i = 0; i < targetX - currentX; i++) {
+                currentPiece.moveRight();
+                if (!board.canPlacePiece(currentPiece)) {
+                    currentPiece.moveLeft();
+                    System.out.println("[Game] Cannot move further right");
+                    break;
+                }
+            }
+        }
+
+        moveDown();
+    }
+
+
+    public AIPlayer getAIPlayer() {
+        return aiPlayer;
+    }
+
+    public void reset() {
+        board.clear();
+        points = 0;
+        lines = 0;
+        gameState = GameState.IDLE;
+        dropCounter = 0;
+        currentPiece = null;
+        nextPiece = null;
+        aiMoveMadeForCurrentPiece = false;
+        updateDropSpeed();
+    }
+
     public void moveDown() {
-        int nextY = currentPiece.getY() + 1;
-        if (board.canPlaceBlocks(currentPiece.getX(), nextY, currentPiece.getBlocks())) {
-            currentPiece.moveDown();
-        } else {
+        currentPiece.moveDown();
+        if (!board.canPlacePiece(currentPiece)) {
+            currentPiece.moveUp();
+            System.out.println("[GRAVITY] Piece locked at y=" + currentPiece.getY());
             lockPiece();
         }
     }
 
-    private void lockPiece() {
-        board.placeBlocks(currentPiece.getX(), currentPiece.getY(), currentPiece.getBlocks(), currentPiece.getType());
-
-        int rowsCleared = board.clearRows();
-        if (rowsCleared > 0) {
-            lines += rowsCleared;
-            addLinesToScore(rowsCleared);
+    public int checkForLineClears() {
+        int[] completeRows = board.getCompleteRows();
+        if (completeRows.length > 0) {
+            board.clearRows(completeRows);
+            lines += completeRows.length;
+            addLinesToScore(completeRows.length);
             SoundEffects.getInstance().playClearLines();
+            return completeRows.length;
+        }
+        return 0;
+    }
+
+    private void lockPiece() {
+        System.out.println("\n[LOCK] ========== LOCKING PIECE ==========");
+        System.out.println("[LOCK] Piece: type=" + currentPiece.getType() +
+                           ", x=" + currentPiece.getX() +
+                           ", y=" + currentPiece.getY());
+
+        board.placePiece(currentPiece);
+        printBoard();
+
+        int[] completeRows = board.getCompleteRows();
+        int linesCleared = 0;
+        if (completeRows.length > 0) {
+            board.clearRows(completeRows);
+            lines += completeRows.length;
+            linesCleared = completeRows.length;
+            addLinesToScore(completeRows.length);
+            SoundEffects.getInstance().playClearLines();
+            System.out.println("[LOCK] CLEARED! Total lines: " + lines + ", Score: " + points);
+
+            // Notify AI of reward after line clear
+            if (useAIPlayer && config.isAiPlayEnabled()) {
+                aiPlayer.updateAfterMove(board, linesCleared);
+            }
+        } else {
+            System.out.println("[LOCK] No complete rows found");
         }
 
         if (board.isGameOver()) {
+            System.out.println("[LOCK] GAME OVER detected");
             gameState = GameState.GAME_OVER;
             SoundEffects.getInstance().playGameOver();
+
+            // End current AI episode with final score
+            if (useAIPlayer && config.isAiPlayEnabled()) {
+                aiPlayer.endGame(points);
+            }
         } else {
             spawnNextPiece();
         }
+        System.out.println("[LOCK] ====================================\n");
+    }
+
+
+    private void printBoard() {
+        int[][] grid = board.getGrid();
+        System.out.println("[Game] ========== FULL BOARD STATE (20 rows) ==========");
+        for (int r = 0; r < grid.length; r++) {
+            System.out.print("  Row " + String.format("%2d", r) + ": ");
+            for (int c = 0; c < grid[r].length; c++) {
+                System.out.print(grid[r][c] > 0 ? "█" : "·");
+            }
+            boolean isFull = true;
+            for (int c = 0; c < grid[r].length; c++) {
+                if (grid[r][c] == 0) {
+                    isFull = false;
+                    break;
+                }
+            }
+            if (isFull) {
+                System.out.print("  FULL ROW");
+            }
+            System.out.println();
+        }
+        System.out.println("[Game] ===============================================");
     }
 
     private void addLinesToScore(int rowsCleared) {
@@ -278,9 +445,9 @@ public class Game {
         if (gameState != GameState.RUNNING) {
             return;
         }
-        int nextX = currentPiece.getX() - 1;
-        if (board.canPlaceBlocks(nextX, currentPiece.getY(), currentPiece.getBlocks())) {
-            currentPiece.moveLeft();
+        currentPiece.moveLeft();
+        if (!board.canPlacePiece(currentPiece)) {
+            currentPiece.moveRight();
         }
     }
 
@@ -288,9 +455,9 @@ public class Game {
         if (gameState != GameState.RUNNING) {
             return;
         }
-        int nextX = currentPiece.getX() + 1;
-        if (board.canPlaceBlocks(nextX, currentPiece.getY(), currentPiece.getBlocks())) {
-            currentPiece.moveRight();
+        currentPiece.moveRight();
+        if (!board.canPlacePiece(currentPiece)) {
+            currentPiece.moveLeft();
         }
     }
 
@@ -304,17 +471,16 @@ public class Game {
                            ", rotationState=" + currentPiece.getRotationState() +
                            ", x=" + currentPiece.getX() + ", y=" + currentPiece.getY());
 
-        int[][] rotatedBlocks = currentPiece.getRotatedBlocks();
-        System.out.println("DEBUG: Rotated blocks to check: " + java.util.Arrays.deepToString(rotatedBlocks));
+        currentPiece.rotate();
+        System.out.println("DEBUG: Attempted rotation. New rotationState=" + currentPiece.getRotationState());
 
-        boolean canPlace = board.canPlaceBlocks(currentPiece.getX(), currentPiece.getY(), rotatedBlocks);
-        System.out.println("DEBUG: canPlaceBlocks result = " + canPlace);
-
-        if (canPlace) {
-            currentPiece.rotate();
-            System.out.println("DEBUG: Rotation applied. New rotationState=" + currentPiece.getRotationState());
+        if (!board.canPlacePiece(currentPiece)) {
+            for (int i = 0; i < 3; i++) {
+                currentPiece.rotate();
+            }
+            System.out.println("DEBUG: Rotation BLOCKED - reverted");
         } else {
-            System.out.println("DEBUG: Rotation BLOCKED");
+            System.out.println("DEBUG: Rotation applied successfully");
         }
     }
 
@@ -322,8 +488,12 @@ public class Game {
         if (gameState != GameState.RUNNING) {
             return;
         }
-        while (board.canPlaceBlocks(currentPiece.getX(), currentPiece.getY() + 1, currentPiece.getBlocks())) {
+        while (true) {
             currentPiece.moveDown();
+            if (!board.canPlacePiece(currentPiece)) {
+                currentPiece.moveUp();
+                break;
+            }
         }
         lockPiece();
     }
@@ -380,6 +550,13 @@ public class Game {
         return config.getGameLevel();
     }
 
+    public int getScore() {
+        return points;
+    }
+
+    public void clear() {
+        board.clear();
+    }
     public Configuration getConfiguration() {
         return config;
     }

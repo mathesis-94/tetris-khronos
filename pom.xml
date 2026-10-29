@@ -7,7 +7,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.pg.39</groupId>
     <artifactId>tetris-khronos</artifactId>
-    <version>1.0-MILESTONE-1</version>
+    <version>1.0</version>
     <packaging>jar</packaging>
     <name>Tetris Khronos</name>
     <description>Yet another Tetris game implementation in Java21 and JavaFX</description>
@@ -141,9 +141,24 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>com.tetriskhronos.App</mainClass>
+                    <mainClass>com.tetriskhronos.Launcher</mainClass>
                 </configuration>
             </plugin>
+
+            <!-- Maven JAR Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>com.tetriskhronos.Launcher</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
 
             <!-- Compiler Plugin -->
             <plugin>
@@ -161,14 +176,24 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.6.0</version>
+                <version>3.1.2</version>
                 <configuration>
-                    <argLine>@{argLine} -Dtestfx.headless=true -Dprism.order=sw -Dprism.text=t2k -Djava.awt.headless=true</argLine>
+                    <argLine>
+                        -Dtestfx.headless=true
+                        -Dprism.order=sw
+                        -Dprism.text=t2k
+                        -Djava.awt.headless=true
+                        --add-opens java.base/java.lang=ALL-UNNAMED
+                        --add-opens java.base/java.util=ALL-UNNAMED
+                        --add-opens java.base/java.io=ALL-UNNAMED
+                        --add-opens java.base/sun.nio.ch=ALL-UNNAMED
+                    </argLine>
                     <systemPropertyVariables>
                         <mockito.mock-maker>inline</mockito.mock-maker>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
+
 
             <!-- JaCoCo Code Coverage Plugin -->
             <plugin>
@@ -208,7 +233,7 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>com.tetriskhronos.App</mainClass>
+                                    <mainClass>com.tetriskhronos.Launcher</mainClass>
                                 </manifest>
                             </archive>
                             <appendAssemblyId>true</appendAssemblyId>
@@ -217,13 +242,14 @@
                 </executions>
             </plugin>
 
+
             <!-- Exec Maven Plugin -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.0</version>
                 <configuration>
-                    <mainClass>com.tetriskhronos.App</mainClass>
+                    <mainClass>com.tetriskhronos.Launcher</mainClass>
                 </configuration>
             </plugin>
         </plugins>

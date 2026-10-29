@@ -14,21 +14,28 @@ public class GameScreen extends Screen {
     private final GamePanel gamePanel;
     private final Stage stage;
     private final MusicManager musicManager;
+
     public GameScreen(Stage stage, Game game, Runnable onBack, MusicManager musicManager) {
         super(stage);
         this.stage = stage;
         this.game = game;
         this.musicManager = musicManager;
         this.gamePanel = new GamePanel(game, onBack);
-        int windowWidth = 400;   // 10 cols * 40px per cell
-        int windowHeight = 700;  // 20 rows * 35px per cell
+
+        int windowWidth = 500;
+        int windowHeight = 750;
+
         StackPane root = new StackPane(gamePanel);
-        root.setPrefSize(windowWidth, windowHeight);
+        root.setStyle("-fx-background-color: #1a1a1a;");
+
         scene = new Scene(root, windowWidth, windowHeight);
+
         stage.setWidth(windowWidth);
         stage.setHeight(windowHeight);
+        stage.setMinWidth(400);
+        stage.setMinHeight(600);
         stage.centerOnScreen();
-        stage.setResizable(false);
+        stage.setResizable(true);
     }
 
     public GameScreen(Stage stage, Game game, Runnable onBack) {
@@ -37,6 +44,11 @@ public class GameScreen extends Screen {
 
     @Override
     public void show() {
+        // Enable AI player if configured
+        if (Configuration.getInstance().isAiPlayEnabled()) {
+            game.setUseAIPlayer(true);
+        }
+
         game.start();
         musicManager.play();
         gamePanel.startGameLoop();

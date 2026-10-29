@@ -5,22 +5,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.Mockito;
 
-import java.util.List;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 @DisplayName("Board Tests")
 class BoardTest {
     private Board board;
-    private Board spyBoard;
 
     @BeforeEach
     void setUp() {
         board = new Board(10, 20);
-        spyBoard = Mockito.spy(new Board());
     }
 
     @Test
@@ -41,9 +37,11 @@ class BoardTest {
             board.setCell(board.getHeight() - 1, col, 1);
         }
 
-        int clearedCount = board.clearRows();
+        int[] completeRows = board.getCompleteRows();
+        assertEquals(1, completeRows.length, "Should have 1 complete row");
 
-        assertEquals(1, clearedCount, "Should clear 1 row");
+        board.clearRows(completeRows);
+
         for (int col = 0; col < board.getWidth(); col++) {
             assertTrue(board.isCellEmpty(board.getHeight() - 1, col),
                 "Cleared row should be empty");
@@ -70,60 +68,16 @@ class BoardTest {
     }
 
     @Test
-    @DisplayName("Should verify spy tracks cell placement")
-    void testSpyPlacedBlocks() {
-        int x = 5, y = 5;
-        int[][] blocks = {{0, 0}, {0, 1}, {1, 0}, {1, 1}};
-        int tetrominoId = 3;
-
-        spyBoard.placeBlocks(x, y, blocks, tetrominoId);
-
-        assertFalse(spyBoard.isCellEmpty(y, x),
-            "Placed block should not be empty");
-
-        // Verify spy method was called
-        verify(spyBoard).placeBlocks(x, y, blocks, tetrominoId);
-    }
-
-    @Test
-    @DisplayName("Should demonstrate Mock with predefined behavior")
-    void testMockBoardBehavior() {
-        // create mock board
-        Board mockBoard = mock(Board.class);
-        when(mockBoard.isCellEmpty(0, 5)).thenReturn(false);
-        when(mockBoard.getWidth()).thenReturn(10);
-        when(mockBoard.getHeight()).thenReturn(20);
-        when(mockBoard.isWithinBounds(5, 5)).thenReturn(true);
-        when(mockBoard.isWithinBounds(-1, -1)).thenReturn(false);
-
-        assertFalse(mockBoard.isCellEmpty(0, 5),
-            "Mock should return false for top row");
-        assertEquals(10, mockBoard.getWidth(),
-            "Mock should return width of 10");
-        assertEquals(20, mockBoard.getHeight(),
-            "Mock should return height of 20");
-        assertTrue(mockBoard.isWithinBounds(5, 5),
-            "Mock should return true for valid coordinates");
-        assertFalse(mockBoard.isWithinBounds(-1, -1),
-            "Mock should return false for invalid coordinates");
-
-        // verify interactions
-        verify(mockBoard).isCellEmpty(0, 5);
-        verify(mockBoard, times(1)).getWidth();
-        verify(mockBoard, times(1)).getHeight();
-        verify(mockBoard, times(2)).isWithinBounds(anyInt(), anyInt());
-    }
-
-    @Test
     @DisplayName("Should detect complete rows")
     void testGetCompleteRows() {
         for (int col = 0; col < board.getWidth(); col++) {
             board.setCell(15, col, 1);
         }
 
-        List<Integer> completeRows = board.getCompleteRows();
+        int[] completeRows = board.getCompleteRows();
 
-        assertTrue(completeRows.contains(15), "Row 15 should be complete");
+        assertTrue(Arrays.stream(completeRows).anyMatch(row -> row == 15),
+            "Row 15 should be complete");
     }
 
     @Test
@@ -142,5 +96,33 @@ class BoardTest {
         assertFalse(board.isWithinBounds(5, -1), "Negative col should be out of bounds");
         assertFalse(board.isWithinBounds(5, 10), "Col >= width should be out of bounds");
         assertTrue(board.isWithinBounds(5, 5), "Valid coords should be in bounds");
+    }
+
+    @Test
+    @DisplayName("Should copy board correctly")
+    void testBoardCopy() {
+        board.setCell(5, 5, 1);
+        board.setCell(10, 3, 2);
+        Board copy = new Board(board);
+        assertEquals(board.getCell(5, 5), copy.getCell(5, 5), "Copy should have same cell value at (5,5)");
+        assertEquals(board.getCell(10, 3), copy.getCell(10, 3), "Copy should have same cell value at (10,3)");
+        copy.setCell(5, 5, 99);
+        assertNotEquals(board.getCell(5, 5), copy.getCell(5, 5), "Modifying copy should not affect original");
+    }
+
+    @Test
+    @DisplayName("Should clear the entire board")
+    void testBoardClearMethod() {
+        board.setCell(5, 5, 1);
+        board.setCell(10, 3, 2);
+        assertFalse(board.isCellEmpty(5, 5), "Cell should be occupied before clear");
+        board.clear();
+
+        for (int row = 0; row < board.getHeight(); row++) {
+            for (int col = 0; col < board.getWidth(); col++) {
+                assertTrue(board.isCellEmpty(row, col),
+                    "Cell [" + row + "," + col + "] should be empty after clear()");
+            }
+        }
     }
 }

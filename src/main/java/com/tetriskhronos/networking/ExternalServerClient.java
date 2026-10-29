@@ -1,77 +1,90 @@
 package com.tetriskhronos.networking;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tetriskhronos.model.OpMove;
+import com.tetriskhronos.model.OpMove;  // ← ADD THIS
 import com.tetriskhronos.model.PureGame;
-
-import java.io.*;
-import java.net.Socket;
-import java.net.SocketException;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.concurrent.CompletableFuture;
 
 public class ExternalServerClient {
-    private static final String SERVER_HOST = "localhost";
-    private static final int SERVER_PORT = 3000;
-    private static final int TIMEOUT = 5000; // 5 seconds timeout
-    private final ObjectMapper mapper = new ObjectMapper();
+    private static final String SERVER_URL = "http://localhost:3000";
+    private static final String GET_MOVE_ENDPOINT = "/api/getMove";
+    private final HttpClient httpClient;
+    private final ObjectMapper objectMapper;
+
+    public ExternalServerClient() {
+        this.httpClient = HttpClient.newHttpClient();
+        this.objectMapper = new ObjectMapper();
+    }
 
     /**
-     * Sends the current game state to TetrisServer and receives the optimal move.
-     * @param game The current game state to send to the server
-     * @return The optimal move (OpMove) if successful, null if server is unreachable
-     * @throws IOException if there's an error during communication
+     * Check if external server is running
      */
-    public OpMove getOptimalMove(PureGame game) throws IOException {
-        try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT)) {
-            socket.setSoTimeout(TIMEOUT);
+    public boolean isServerRunning() {
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(SERVER_URL + "/health"))
+                    .GET()
+                    .timeout(java.time.Duration.ofSeconds(2))
+                    .build();
 
-            OutputStream out = socket.getOutputStream();
-            BufferedReader in = new BufferedReader(
-                    new InputStreamReader(socket.getInputStream()));
-
-            // Step 1: Convert PureGame to JSON
-            String jsonGameState = mapper.writeValueAsString(game);
-            System.out.println("[ExternalServer] Sending game state: " + jsonGameState);
-
-            // Step 2: Send the game state to the server (raw bytes, no PrintWriter)
-            out.write(jsonGameState.getBytes());
-            out.write('\n'); // Send newline as delimiter if server expects it
-            out.flush();
-
-            // Step 3: Wait for the server's response
-            String response = in.readLine();
-            if (response == null) {
-                System.err.println("[ExternalServer] Server closed connection without response.");
-                return null;
-            }
-
-            System.out.println("[ExternalServer] Received response: " + response);
-
-            // Step 4: Convert the JSON response to an OpMove object
-            OpMove move = mapper.readValue(response, OpMove.class);
-            System.out.println("[ExternalServer] Optimal Move: X=" + move.opX() +
-                             ", Rotations=" + move.opRotate());
-
-            return move;
-
-        } catch (SocketException e) {
-            System.err.println("[ExternalServer] Server is unreachable at " +
-                             SERVER_HOST + ":" + SERVER_PORT);
-            return null;
-        } catch (IOException e) {
-            System.err.println("[ExternalServer] Error communicating with server: " + e.getMessage());
-            throw e;
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200;
+        } catch (Exception e) {
+            System.err.println("[ExternalServerClient] Server health check failed: " + e.getMessage());
+            return false;
         }
     }
 
     /**
-     * Checks if the server is running
-     * @return true if server is reachable, false otherwise
+     * Request optimal move asynchronously (non-blocking)
+     * Returns a CompletableFuture that completes when the server responds
      */
-    public boolean isServerRunning() {
-        try (Socket socket = new Socket(SERVER_HOST, SERVER_PORT)) {
-            return true;
-        } catch (IOException e) {
-            return false;
+    public CompletableFuture<OpMove> getOptimalMoveAsync(PureGame pureGame) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return getOptimalMove(pureGame);
+            } catch (IOException e) {
+                System.err.println("[ExternalServerClient] Error during async move request: " + e.getMessage());
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    /**
+     * Request optimal move (synchronous - use getOptimalMoveAsync() to avoid blocking UI)
+     */
+    public OpMove getOptimalMove(PureGame pureGame) throws IOException {
+        try {
+            String jsonPayload = objectMapper.writeValueAsString(pureGame);
+            System.out.println("[ExternalServerClient] Sending game state to server: " + jsonPayload.substring(0, Math.min(100, jsonPayload.length())) + "...");
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(SERVER_URL + GET_MOVE_ENDPOINT))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonPayload))
+                    .timeout(java.time.Duration.ofSeconds(5))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() == 200) {
+                OpMove move = objectMapper.readValue(response.body(), OpMove.class);
+                System.out.println("[ExternalServerClient] Received move: " + move);
+                return move;
+            } else {
+                System.err.println("[ExternalServerClient] Server returned status " + response.statusCode() +
+                                 ": " + response.body());
+                return null;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("[ExternalServerClient] Request interrupted: " + e.getMessage());
+            return null;
         }
     }
 }

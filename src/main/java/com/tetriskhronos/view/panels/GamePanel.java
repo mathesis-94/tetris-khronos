@@ -23,7 +23,8 @@ import com.tetriskhronos.controller.GameLoopThread;
 import com.tetriskhronos.model.Game;
 import com.tetriskhronos.model.Configuration;
 import com.tetriskhronos.model.Tetromino;
-import com.tetriskhronos.ai.SimpleAIPlayer;
+import com.tetriskhronos.model.Board;
+import com.tetriskhronos.ai.AIPlayer;
 import com.tetriskhronos.view.renderers.FieldPane;
 import com.tetriskhronos.view.renderers.BoardRenderer;
 import com.tetriskhronos.audio.MusicManager;
@@ -38,24 +39,25 @@ public class GamePanel extends BorderPane {
     private GameLoopThread gameLoopThread;
     private boolean showQuitConfirm = false;
 
-    // AI Integration
-    private SimpleAIPlayer aiPlayer;
+    private AIPlayer aiPlayer;
     private boolean aiEnabled;
-    private long lastAIMoveTime = 0;
-    private static final long AI_MOVE_DELAY = 500_000_000; // 500ms in nanoseconds
+    private Tetromino lastPiece;
+    private boolean aiMoveExecuted;
 
     public GamePanel(Game game, Runnable onExit) {
         this.game = game;
         this.onExit = onExit;
 
-        // Initialize AI
         this.aiEnabled = Configuration.getInstance().isAiPlayEnabled();
         if (aiEnabled) {
-            this.aiPlayer = new SimpleAIPlayer(game);
+            this.aiPlayer = new AIPlayer();
+            aiPlayer.startEpisode(game.getBoard());
             System.out.println("AI Player enabled");
         }
 
-        // Calculate cell size dynamically based on window (we'll use default for now)
+        this.lastPiece = null;
+        this.aiMoveExecuted = false;
+
         int cellSize = 30;
         int boardWidth = game.getConfiguration().getFieldWidth() * cellSize;
         int boardHeight = game.getConfiguration().getFieldHeight() * cellSize;
@@ -65,7 +67,6 @@ public class GamePanel extends BorderPane {
         setStyle("-fx-background-color: #1a1a1a;");
         setFocusTraversable(true);
 
-        // Create pause indicator (green || symbol)
         pauseIndicator = new Label("||");
         pauseIndicator.setTextFill(Color.web("#00FF00"));
         pauseIndicator.setFont(Font.font("Arial", FontWeight.BOLD, 80));
@@ -83,13 +84,11 @@ public class GamePanel extends BorderPane {
         gameField.setMaxWidth(400);
         gameField.setMaxHeight(700);
 
-        // vbox wrap grow
         VBox centerBox = new VBox(gameField);
         centerBox.setStyle("-fx-background-color: #1a1a1a;");
         VBox.setVgrow(gameField, Priority.ALWAYS);
         setCenter(centerBox);
 
-        // Bottom: instructions
         String aiIndicator = aiEnabled ? " | AI: ON" : "";
         Label instructions = new Label("← → Move | ↓ Speed Up | ↑ Rotate | Space Hard Drop | P Pause | M Music | S Sound | ESC Quit" + aiIndicator);
         instructions.setTextFill(Color.web("#888888"));
@@ -137,11 +136,11 @@ public class GamePanel extends BorderPane {
                 }
                 case M -> {
                     MusicManager.getInstance().toggleMute();
-                    System.out.println(MusicManager.getInstance().isMuted() ? "🔇 Music OFF" : "🔊 Music ON");
+                    System.out.println(MusicManager.getInstance().isMuted() ? "Music OFF" : "Music ON");
                 }
                 case S -> {
                     SoundEffects.getInstance().toggleMute();
-                    System.out.println(SoundEffects.getInstance().isMuted() ? "🔇 Sound Effects OFF" : "🔊 Sound Effects ON");
+                    System.out.println(SoundEffects.getInstance().isMuted() ? "Sound Effects OFF" : "Sound Effects ON");
                 }
                 case ESCAPE -> showQuitConfirm = true;
                 default -> {}
@@ -155,33 +154,35 @@ public class GamePanel extends BorderPane {
         });
     }
 
-
     private void updatePauseIndicator() {
         pauseIndicator.setVisible(game.isPaused());
         Platform.runLater(() -> fieldPane.render(game));
     }
 
-
     public void startGameLoop() {
         if (gameLoopThread == null || !gameLoopThread.isRunning()) {
             gameLoopThread = new GameLoopThread(game, () -> {
-                // Execute AI move if enabled
+                Tetromino currentPiece = game.getCurrentPiece();
+
                 if (aiEnabled && aiPlayer != null && !game.isPaused() && !game.isGameOver()) {
-                    long now = System.nanoTime();
-                    if (now - lastAIMoveTime > AI_MOVE_DELAY) {
-                        executeAIMove();
-                        lastAIMoveTime = now;
+                    if (currentPiece != lastPiece) {
+                        aiPlayer.selectMove(game.getBoard(), currentPiece);
+                        lastPiece = currentPiece;
+                        aiMoveExecuted = true;
+                    }
+
+                    if (aiMoveExecuted && currentPiece.getY() > 2) {
+                        aiPlayer.updateAfterMove(game.getBoard(), game.getLines());
+                        aiMoveExecuted = false;
                     }
                 }
 
                 Platform.runLater(() -> fieldPane.render(game));
 
-                // Check if game is over
                 if (game.isGameOver()) {
                     Platform.runLater(this::showGameOverDialog);
                 }
 
-                // Handle quit confirmation on FX thread
                 if (showQuitConfirm) {
                     Platform.runLater(this::showQuitDialog);
                     showQuitConfirm = false;
@@ -191,32 +192,6 @@ public class GamePanel extends BorderPane {
         }
     }
 
-
-
-    private void executeAIMove() {
-        try {
-            if (aiPlayer == null) {
-                return;
-            }
-
-            // Use the existing SimpleAIPlayer API
-            SimpleAIPlayer.AIMove bestMove = aiPlayer.findBestMove();
-            if (bestMove != null) {
-                aiPlayer.executeMoveSequence(bestMove);
-
-
-                System.out.println("AI Move: rotation=" + bestMove.rotation +
-                        ", col=" + bestMove.column +
-                        ", score=" + bestMove.score +
-                        " | Game Score: " + aiPlayer.getScore() +
-                        ", Lines: " + aiPlayer.getLines());
-            }
-        } catch (Exception e) {
-            System.err.println("❌ AI Error: " + e.getMessage());
-        }
-    }
-
-
     private void showQuitDialog() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Quit to Menu");
@@ -225,6 +200,9 @@ public class GamePanel extends BorderPane {
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
+            if (aiEnabled && aiPlayer != null) {
+                aiPlayer.endGame(game.getScore());
+            }
             onExit.run();
         }
     }
@@ -232,13 +210,16 @@ public class GamePanel extends BorderPane {
     private void showGameOverDialog() {
         stopGameLoop();
 
+        if (aiEnabled && aiPlayer != null) {
+            aiPlayer.endGame(game.getScore());
+        }
+
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Game Over");
         alert.setHeaderText("Game Over!");
-        alert.setContentText("Final Score: " + game.getPoints() + "\nLines Cleared: " + game.getLines());
+        alert.setContentText("Final Score: " + game.getScore() + "\nLines Cleared: " + game.getLines());
 
-        // Create a dialog with name input
-        javafx.scene.control.TextInputDialog nameDialog = new javafx.scene.control.TextInputDialog("Player");
+        TextInputDialog nameDialog = new TextInputDialog("Player");
         nameDialog.setTitle("Save Score");
         nameDialog.setHeaderText("Enter your name:");
         nameDialog.setContentText("Name:");
@@ -246,16 +227,12 @@ public class GamePanel extends BorderPane {
         Optional<String> result = nameDialog.showAndWait();
         if (result.isPresent() && !result.get().isBlank()) {
             String playerName = result.get();
-            com.tetriskhronos.persistence.ScoreRepository.getInstance()
-                .saveScore(playerName, game.getPoints());
-            System.out.println("Score saved: " + playerName + " - " + game.getPoints());
+            ScoreRepository.getInstance().saveScore(playerName, game.getScore());
+            System.out.println("Score saved: " + playerName + " - " + game.getScore());
         }
 
-        // Return to menu
         onExit.run();
     }
-
-
 
     public void stopGameLoop() {
         if (gameLoopThread != null && gameLoopThread.isRunning()) {

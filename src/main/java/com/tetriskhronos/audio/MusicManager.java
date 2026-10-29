@@ -8,10 +8,14 @@ public class MusicManager {
     private static final MusicManager INSTANCE = new MusicManager();
     private MediaPlayer mediaPlayer;
     private boolean muted = false;
+    private final boolean headless;
     private static final String MUSIC_FILE = "sounds/background.wav";
 
     private MusicManager() {
-        loadMusic();
+        this.headless = "true".equals(System.getProperty("java.awt.headless"));
+        if (!headless) {
+            loadMusic();
+        }
     }
 
     public static MusicManager getInstance() {
@@ -32,7 +36,6 @@ public class MusicManager {
             this.mediaPlayer.setCycleCount(MediaPlayer.INDEFINITE);
             this.mediaPlayer.setVolume(0.5);
 
-            // Add error handler
             mediaPlayer.setOnError(() -> {
                 System.err.println("❌ Media error: " + mediaPlayer.getError());
                 tryLoadFallback();
@@ -61,24 +64,26 @@ public class MusicManager {
     }
 
     public void play() {
-        if (mediaPlayer != null && !muted) {
-            try {
-                mediaPlayer.play();
-                System.out.println("▶️ Music playing...");
-            } catch (Exception e) {
-                System.err.println("❌ Error playing music: " + e.getMessage());
-            }
+        if (headless || mediaPlayer == null || muted) {
+            return;
+        }
+        try {
+            mediaPlayer.play();
+            System.out.println("▶️ Music playing...");
+        } catch (Exception e) {
+            System.err.println("❌ Error playing music: " + e.getMessage());
         }
     }
 
     public void stop() {
-        if (mediaPlayer != null) {
-            try {
-                mediaPlayer.stop();
-                System.out.println("⏹️ Music stopped");
-            } catch (Exception e) {
-                System.err.println("❌ Error stopping music: " + e.getMessage());
-            }
+        if (headless || mediaPlayer == null) {
+            return;
+        }
+        try {
+            mediaPlayer.stop();
+            System.out.println("⏹️ Music stopped");
+        } catch (Exception e) {
+            System.err.println("❌ Error stopping music: " + e.getMessage());
         }
     }
 
@@ -94,9 +99,10 @@ public class MusicManager {
     }
 
     public void setVolume(double volume) {
-        if (mediaPlayer != null) {
-            mediaPlayer.setVolume(Math.max(0.0, Math.min(1.0, volume)));
+        if (headless || mediaPlayer == null) {
+            return;
         }
+        mediaPlayer.setVolume(Math.max(0.0, Math.min(1.0, volume)));
     }
 
     public boolean isMuted() {

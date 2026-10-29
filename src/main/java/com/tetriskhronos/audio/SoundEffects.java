@@ -10,9 +10,13 @@ public class SoundEffects {
     private static final SoundEffects INSTANCE = new SoundEffects();
     private final Map<String, MediaPlayer> playerCache = new HashMap<>();
     private boolean muted = false;
+    private final boolean headless;
 
     private SoundEffects() {
-        loadSounds();
+        this.headless = "true".equals(System.getProperty("java.awt.headless"));
+        if (!headless) {
+            loadSounds();
+        }
     }
 
     public static SoundEffects getInstance() {
@@ -46,12 +50,12 @@ public class SoundEffects {
     }
 
     private void playSound(String soundFile) {
-        if (muted || !playerCache.containsKey(soundFile)) {
+        if (headless || muted || !playerCache.containsKey(soundFile)) {
             return;
         }
         try {
             MediaPlayer player = playerCache.get(soundFile);
-            player.stop();  // Reset to beginning
+            player.stop();
             player.play();
         } catch (Exception e) {
             System.err.println("❌ Error playing sound: " + e.getMessage());

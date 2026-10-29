@@ -1,27 +1,24 @@
 package com.tetriskhronos.model;
 
 import java.util.Random;
-/**
- * Sealed abstract class for Tetromino pieces, track positions etc
- */
+
 public sealed abstract class Tetromino permits
     IPiece, OPiece, TPiece, SPiece, ZPiece, JPiece, LPiece {
 
     protected int[][] shape;
     protected TetrominoColor color;
     protected int rotationState = 0;
-    protected int x; // column position on board
-    protected int y; // row position on board
-    protected int type; // 1-7 for each piece type
+    protected int x;
+    protected int y;
+    protected int type;
 
     protected Tetromino(int[][] initialShape, TetrominoColor color, int type) {
         this.shape = initialShape;
         this.color = color;
         this.type = type;
-        this.x = 4;  // 10 - shape.width
-        this.y = 0;  // Top
+        this.x = 4;
+        this.y = 0;
     }
-
 
     public int[][] getBlocks() {
         int[][] blocks = new int[4][2];
@@ -53,49 +50,56 @@ public sealed abstract class Tetromino permits
         return blocks;
     }
 
-    /**
-     * Returns rotated block positions (relative offsets) (could be source of issue)
-     */
-     public int[][] getRotatedBlocks() {
-         int[][] originalShape = this.shape;
-         int originalRotationState = this.rotationState;
+    public int[][] getRotatedBlocks() {
+        int[][] originalShape = this.shape;
+        int originalRotationState = this.rotationState;
 
-         rotate();
+        rotate();
 
-         int[][] tempBlocks = new int[4][2];
-         int blockIndex = 0;
-         for (int row = 0; row < shape.length; row++) {
-             for (int col = 0; col < shape[row].length; col++) {
-                 if (shape[row][col] == 1 && blockIndex < 4) {
-                     tempBlocks[blockIndex][0] = row;
-                     tempBlocks[blockIndex][1] = col;
-                     blockIndex++;
-                 }
-             }
-         }
+        int[][] tempBlocks = new int[4][2];
+        int blockIndex = 0;
+        for (int row = 0; row < shape.length; row++) {
+            for (int col = 0; col < shape[row].length; col++) {
+                if (shape[row][col] == 1 && blockIndex < 4) {
+                    tempBlocks[blockIndex][0] = row;
+                    tempBlocks[blockIndex][1] = col;
+                    blockIndex++;
+                }
+            }
+        }
 
-         this.rotationState = originalRotationState;
-         this.shape = originalShape;
+        this.rotationState = originalRotationState;
+        this.shape = originalShape;
 
-         return tempBlocks;
-     }
-
-
+        return tempBlocks;
+    }
 
     public void moveDown() {
         this.y++;
     }
+
     public void moveLeft() {
         this.x--;
     }
+
     public void moveRight() {
         this.x++;
     }
 
-    /**
-     * Rotate 90
-     */
+    public void moveUp() {
+        this.y--;
+    }
+
+    public void setX(int x) {
+        this.x = x;
+    }
+
+    public void setY(int y) {
+        this.y = y;
+    }
+
     public abstract void rotate();
+
     public abstract boolean canPlaceAt(int x, int y, Board board);
 
     public int getRotationState() {
@@ -105,6 +109,7 @@ public sealed abstract class Tetromino permits
     public int[][] getShape() {
         return shape;
     }
+
     public TetrominoColor getColor() {
         return color;
     }
@@ -116,11 +121,11 @@ public sealed abstract class Tetromino permits
     public int getX() {
         return x;
     }
+
     public int getY() {
         return y;
     }
 
-    /* make random tetro */
     public static Tetromino createRandom(Random random) {
         return switch (random.nextInt(7)) {
             case 0 -> new IPiece();
@@ -134,7 +139,6 @@ public sealed abstract class Tetromino permits
         };
     }
 
-    //  Colour Enum
     public enum TetrominoColor {
         CYAN("#00FFFF"),
         YELLOW("#FFFF00"),
@@ -155,9 +159,6 @@ public sealed abstract class Tetromino permits
         }
     }
 }
-
-// ========== Tetro Pieces  ==========
-
 
 final class IPiece extends Tetromino {
     public IPiece() {
@@ -180,7 +181,6 @@ final class IPiece extends Tetromino {
     }
 }
 
-
 final class OPiece extends Tetromino {
     public OPiece() {
         super(new int[][] {{1, 1}, {1, 1}}, TetrominoColor.YELLOW, 2);
@@ -188,7 +188,6 @@ final class OPiece extends Tetromino {
 
     @Override
     public void rotate() {
-        // O piece doesn't rotate
     }
 
     @Override
@@ -196,7 +195,6 @@ final class OPiece extends Tetromino {
         return x + 2 <= board.getWidth() && y + 2 <= board.getHeight();
     }
 }
-
 
 final class TPiece extends Tetromino {
     public TPiece() {
@@ -221,7 +219,6 @@ final class TPiece extends Tetromino {
     }
 }
 
-
 final class SPiece extends Tetromino {
     public SPiece() {
         super(new int[][] {{0, 1, 1}, {1, 1, 0}}, TetrominoColor.GREEN, 4);
@@ -242,7 +239,6 @@ final class SPiece extends Tetromino {
             : x + 2 <= board.getWidth() && y + 3 <= board.getHeight();
     }
 }
-
 
 final class ZPiece extends Tetromino {
     public ZPiece() {
